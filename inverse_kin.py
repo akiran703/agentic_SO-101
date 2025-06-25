@@ -43,3 +43,41 @@ class output_movement:
          # Single point of logging for the returned JSON
         logger.info(f"MoveResult JSON: {json.dumps(output_json)}")
         return output_json
+
+class ControlRobot:
+    "store movement in a dictionary to create a high level controller to work in degress and per-joint limits"
+    
+    #calling pre-defined values from the config_robot python file
+    L1 = robot_config.L1
+    L2 = robot_config.L2
+    SL = robot_config.SPATIAL_LIMITS
+    ODL = robot_config.OPERATIONAL_DEGREE_LIMITS 
+    PP = robot_config.PRESET_POSITIONS
+    BHMM = robot_config.BASE_HEIGHT_MM
+    SMOMMR = math.asin(robot_config.SHOULDER_MOUNT_OFFSET_MM /L1)
+    EMOMMR = math.asin(robot_config.ELBOW_MOUNT_OFFSET_MM/ L2)
+    
+    #constructor
+    def __init__(self,UGP):
+        self.current_pos_deg = {}
+        self.current_cart_mm = {"x": 0.0, "z": 0.0}
+        self.motor_names = robot_config.motors.keys()
+        
+        bus_cfg = FeetechMotorsBusConfig(port=robot_config.port, motors=robot_config.motors,)
+        self.motor_bus = FeetechMotorsBus(bus_cfg)
+        self.motor_bus.connect()
+        
+        
+        try:
+            with open(robot_config.calibration_file, "r") as f:
+                self.motor_bus.set_calibration(json.load(f))
+        except:
+            error_msg = f"Calibration file {robot_config.calibration_file} not found"
+            logging.error(error_msg)
+            raise FileNotFoundError(error_msg)
+            
+            
+        
+        
+    
+    
