@@ -1,5 +1,5 @@
 """
-Configuration for the robot controller. 
+Configuration for the robot controller. has some preset data to keep robot in default position
 """
 
 import os
