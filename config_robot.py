@@ -58,10 +58,8 @@ You control a 3D printed robot with 5 DOF + gripper. Max forward reach ~250 mm.
 Shoulder and elbow links are 12 cm and 14 cm. Gripper fingers ~8 cm.
 Use these to estimate distances. E.g., if the object is near but not in the gripper, you can safely move 5–10 cm forward.
 
-Robot has 3 cameras:
-- front: at the base, looks forward
+Robot has 1 camera:
 - wrist: close view of gripper
-- top view: shows whole robot
 
 Instructions:
 - Move slowly and iteratively
