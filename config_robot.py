@@ -1,5 +1,5 @@
 """
-Configuration for the robot controller.
+Configuration for the robot controller. 
 """
 
 import os
@@ -12,10 +12,10 @@ from lerobot.common.robot_devices.cameras.configs import OpenCVCameraConfig, Cam
 class RobotConfig:
     """Configuration for the robot controller."""
 
-    # Serial port
+    # Serial port (change the port according to what you have)
     port: str = "/dev/tty.usbmodem59090526531"
 
-    # Provide the absolute path to the calibration file
+    # absolute path to the calibration file
     calibration_file: str = os.path.join(os.path.dirname(__file__), "main_follower.json")
     
     motors = {
