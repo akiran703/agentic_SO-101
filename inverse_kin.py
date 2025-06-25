@@ -67,7 +67,7 @@ class ControlRobot:
         self.motor_bus = FeetechMotorsBus(bus_cfg)
         self.motor_bus.connect()
         
-        
+        #try to open calibration file
         try:
             with open(robot_config.calibration_file, "r") as f:
                 self.motor_bus.set_calibration(json.load(f))
@@ -75,6 +75,9 @@ class ControlRobot:
             error_msg = f"Calibration file {robot_config.calibration_file} not found"
             logging.error(error_msg)
             raise FileNotFoundError(error_msg)
+        
+        
+        
             
             
         
