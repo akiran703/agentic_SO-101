@@ -45,7 +45,7 @@ class output_movement:
         return output_json
 
 class ControlRobot:
-    "store movement in a dictionary to create a high level controller to work in degress and per-joint limits"
+    #"store movement in a dictionary to create a high level controller to work in degress and per-joint limits"
     
     #calling pre-defined values from the config_robot python file
     L1 = robot_config.L1
@@ -58,8 +58,9 @@ class ControlRobot:
     EMOMMR = math.asin(robot_config.ELBOW_MOUNT_OFFSET_MM/ L2)
     
     #constructor
+    #UGP is updated goal position
     def __init__(self,UGP):
-        self.current_pos_deg = {}
+        self.current_pos_deg: Dict[str, float] = {}
         self.current_cart_mm = {"x": 0.0, "z": 0.0}
         self.motor_names = robot_config.motors.keys()
         
@@ -76,7 +77,73 @@ class ControlRobot:
             logging.error(error_msg)
             raise FileNotFoundError(error_msg)
         
+        self.reboot_robot_state_cache(UGP=UGP)
         
+        #log of output 
+        current_state_dict = self.get_current_robot_state().robot_state
+        logging.info(f"RobotController initialized. State: {current_state_dict}")
+        
+        #setup camera
+        self.camera_controller = CameraController(camera_configs=robot_config.cameras)
+        self.camera_controller.connect()
+        
+    def dictionary_returns_robot_state(self) -> Dict[str,Any]:
+        #"we return a dictonary with the following values: raw motor angles,cartesian position,human readable state for LLM"
+        
+        #robot current state
+        rcs = {}
+        rcs['robot_rotation_clockwise_deg'] = self.current_pos_deg['shoulder_pan'] - 90
+        rcs['gripper_heights_mm'] = self.current_cart_mm['z']
+        rcs['gripper_linear_position_mm'] = self.current_cart_mm['x']
+        
+        #shoulder lift degree
+        sld = self.current_pos_deg['shoulder_lift']
+        #elbow flex deg
+        efd = self.current_pos_deg['elbow_flex']
+        #wrist flex deg
+        wfd = self.current_pos_deg['wrist_flex']
+        
+        #gripper tilt val
+        gtv = sld + wfd - efd
+        rcs['gripper_tilt_deg'] = gtv
+        rcs['gripper_rotation_deg'] = self.current_cart_deg['wrist_roll']                
+        rcs['gripper_openness_pct'] = self.current_pos_deg['gripper']
+        
+        #formatted dict with robot arm data
+        final_dict_robot_state = {}
+        
+        final_dict_robot_state['joint_positions_deg'] = {n: round(pos, 1) for n,pos in self.current_pos_deg.items()}
+        final_dict_robot_state['cartesian_mm'] = {n: round(pos, 1) for n,pos in self.current_cart_mm.items()}
+        final_dict_robot_state['human_readable_state'] = {n: round(pos, 1) for n,pos in rcs.items()}
+        
+        return final_dict_robot_state
+    
+    
+    def reboot_robot_state_cache(self,UGP=False):
+        #"calculate the forward kinematics,read joints, and update cache"
+        temp_pos = {}
+        
+        try:
+            rv = self.motor_bus.read("Present_Position",self.motor_names)
+            for i,n in enumerate(self.motor_names):
+                temp_pos[n] = float(np.asarray(rv[i]).flatten()[0])
+        except Exception as e:
+            logging.error(f"Failed to read motors positions ({e})")
+            return
+            
+        self.current_pos_deg = temp_pos
+        
+        #use forward kinematics to update cartesian coord
+        fk_x,fk_z = self.forward_kinematics(self.current_pos_deg["shoulder_lift"],self.current_pos_deg["elbow_flex"])
+        
+        if UGP:
+            try:
+                goals = [self.current_pos_deg[n] for n in self.motor_names]
+                self.motor_bus.write("Goal_Position", goals, self.motor_names)
+            except Exception as e_goal:
+                logging.error(f"Could not update the goal position on hardware : {e_goal}")
+        
+        return
         
             
             
