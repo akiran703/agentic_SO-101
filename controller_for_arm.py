@@ -63,70 +63,88 @@ class ControlRobot:
    
     
     #constructor
-    #UGP is updated goal position
-    def __init__(self,UGP):
-        robot_config.KINEMATIC_PARAMS.get()
+    #param will be bool to make sure states are not being overriden
+    def __init__(self,READ_ONLY: bool = False):
+        #gets the robots 
+        self.robot_type = robot_config.lerobot_config.get("type")
+        self.robot = None
+        self.read_only = READ_ONLY
         
         
+        #pull values from the confg file
+        #get motor mapping 
+        self.motor_mapping = robot_config.motors_to_degrees
+        #get joint 
+        self.names_of_joint = List(self.motor_mapping.keys())
+        #get presets
+        self.presets = robot_config.PRESET_POSITIONS
+        #for smooth interpolation
+        self.movement_constant = robot_config.MOVEMENT_CONSTANTS
+        
+        #passing the dictionary from confg_robot to the KinematicsM class
+        params_for_kin = robot_config.KINEMATIC_PARAMS.get(self.robot_type, robot_config.KINEMATIC_PARAMS['default'])
+        self.kinematics = KinematicsM(param=params_for_kin)
         
         
-    def dictionary_returns_robot_state(self) -> Dict[str,Any]:
-        #"we return a dictonary with the following values: raw motor angles,cartesian position,human readable state for LLM"
+        #positions in deg 
+        self.position_deg = {n : 0.0 for n in self.names_of_joint}
+        #position 
+        self.position_norm = {n: 0.0 for n in self.names_of_joint}
+        #set up cartesian
+        self.cartesian_MM = {'x': 0.0, 'z': 0.0}
         
-        #robot current state
-        rcs = {}
-        rcs['robot_rotation_clockwise_deg'] = self.current_pos_deg['shoulder_pan'] - 90
-        rcs['gripper_heights_mm'] = self.current_cart_mm['z']
-        rcs['gripper_linear_position_mm'] = self.current_cart_mm['x']
         
-        #shoulder lift degree
-        sld = self.current_pos_deg['shoulder_lift']
-        #elbow flex deg
-        efd = self.current_pos_deg['elbow_flex']
-        #wrist flex deg
-        wfd = self.current_pos_deg['wrist_flex']
+        if READ_ONLY:
+            # In read-only mode, connect and disable torque for manual movement
+            logger.info("Initializing in READ-ONLY mode")
+            self._connect_robot_readonly()
+            self._refresh_state()
+        else:
+            # Normal mode - full initialization
+            self._connect_robot()
+            self._refresh_state()
+
+        logger.info(f"RobotController initialized. Type: {self.robot_type}, Read-only: {READ_ONLY}")
+
         
-        #gripper tilt val
-        gtv = sld + wfd - efd
-        rcs['gripper_tilt_deg'] = gtv
-        rcs['gripper_rotation_deg'] = self.current_cart_deg['wrist_roll']                
-        rcs['gripper_openness_pct'] = self.current_pos_deg['gripper']
-        
-        #formatted dict with robot arm data
-        final_dict_robot_state = {}
-        
-        final_dict_robot_state['joint_positions_deg'] = {n: round(pos, 1) for n,pos in self.current_pos_deg.items()}
-        final_dict_robot_state['cartesian_mm'] = {n: round(pos, 1) for n,pos in self.current_cart_mm.items()}
-        final_dict_robot_state['human_readable_state'] = {n: round(pos, 1) for n,pos in rcs.items()}
-        
-        return final_dict_robot_state
+    def __enter__(self) -> 'ControlRobot':
+        return self
     
-    
-    def reboot_robot_state_cache(self,UGP=False):
-        #"calculate the forward kinematics,read joints, and update cache"
-        temp_pos = {}
+    def __exit__(self,exc_type,exc_val,exc_tb) -> None:
+        self.disconnect(reset_pos=True)
+     
+    #connect to robot   
+    def _connect_robot(self) -> None:
         
-        try:
-            rv = self.motor_bus.read("Present_Position",self.motor_names)
-            for i,n in enumerate(self.motor_names):
-                temp_pos[n] = float(np.asarray(rv[i]).flatten()[0])
-        except Exception as e:
-            logging.error(f"Failed to read motors positions ({e})")
-            return
+        keys_to_not_include = ['type']
+        
+        if self.robot_type == 'lewiki':
+            keys_to_not_include.append('port')
+        else:
+            keys_to_not_include.append('remote_ip')
             
-        self.current_pos_deg = temp_pos
+        robot_params = {k: v for k, v in robot_config.lerobot_config.items() if k not in keys_to_not_include}
         
-        #use forward kinematics to update cartesian coord
-        fk_x,fk_z = self.forward_kinematics(self.current_pos_deg["shoulder_lift"],self.current_pos_deg["elbow_flex"])
         
-        if UGP:
-            try:
-                goals = [self.current_pos_deg[n] for n in self.motor_names]
-                self.motor_bus.write("Goal_Position", goals, self.motor_names)
-            except Exception as e_goal:
-                logging.error(f"Could not update the goal position on hardware : {e_goal}")
+        #using lerobot factory create config
+        try:
+            robot_class, config_class = self.ROBOT_TYPES.get(self.robot_type, (None, None))
+            if not robot_class:
+                raise ValueError(f'Unsupported robot type: {self.robot_type}')
+            new_cfg = config_class(**robot_params)
+            self.robot = robot_class(new_cfg)
+            self.robot.connect()
+            logger.info(f'Connected to {self.robot_type}')
+        except Exception as e:
+            logger.error(f'cant connect to robot: {e}'  )
+            raise
         
-        return
+        
+        
+        
+        
+        
+         
     
     
     
