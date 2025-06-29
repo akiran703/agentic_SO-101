@@ -38,7 +38,7 @@ class RobotConfig:
             "gripper":  (31.0, 100.0, 0.0, 100.0)
         })
     
-    # Movement constants for smooth interpolation
+    # Constants for smooth interpolation
     # Degrees per interpolation step
     # Maximum number of interpolation steps
     # Delay between interpolation steps (100Hz)
@@ -51,9 +51,10 @@ class RobotConfig:
     )
     
     # Camera configuration using lerobot format
+    # hugging face has many robots so made it compitable with these robots "so100", "so101", "lekiwi"
     lerobot_config = field(
         default_factory=lambda: {
-            "type": "default",
+            "type": "so100",
             "port": "/dev/tty.usbmodem59090526531",
             "remote_ip": "192.168.1.1",
             "cameras": {
