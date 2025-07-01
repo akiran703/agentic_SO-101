@@ -161,6 +161,7 @@ class ControlRobot:
         normalized_value = norm_min + ((degrees - deg_min) * (norm_max - norm_min)) / (deg_max - deg_min)
         return normalized_value
     
+    #normalized values to degree
     def norm_to_deg(self,joint_name,normalized) -> float:
         norm_min, norm_max, deg_min, deg_max = self.motor_mapping[joint_name]
         if norm_max == norm_min:
@@ -169,6 +170,127 @@ class ControlRobot:
         return degree_value
         
     
+    #check if the target postion is capable of being executed 
+    def check_if_validate_range(self,pos_in_deg,) -> tuple[bool,str]:
+        errors = []
+        
+        for joint_name, deg_value in pos_in_deg.items():
+            if joint_name not in self.motor_mapping:
+                continue
+                
+            norm_value = self.degree_to_norm(joint_name, deg_value)
+
+            if joint_name == "gripper":
+                norm_min, norm_max = 0, 100
+            else:
+                norm_min, norm_max = -100, 100
+            
+            # Handle inverted ranges (where norm_min > norm_max)
+            actual_min = min(norm_min, norm_max)
+            actual_max = max(norm_min, norm_max)
+            
+            if norm_value < actual_min or norm_value > actual_max:
+                errors.append(
+                    f"{joint_name.replace('_', ' ').title()} position {deg_value:.1f}° "
+                    f"(normalized: {norm_value:.1f}) is outside valid range "
+                    f"{actual_min:.1f} to {actual_max:.1f}"
+                )
+
+        if errors:
+            return False, "Movement impossible - out of range: " + "; ".join(errors)
+        
+        return True, "No errors"
+    
+    #we store the moves we want to make in lerobot
+    def build_and_store_action(self,pos_in_deg) -> Dict[str,float]:
+        act = {}
+        
+        for n, d in pos_in_deg.items():
+            norm_val = self.degree_to_norm(n, d)
+            if self.robot_type == "lekiwi":
+                pos_key = f"arm_{n}.pos" 
+            else:
+                f"{n}.pos"
+            act[pos_key] = norm_val
+        
+        # Add base velocities for lekiwi
+        if self.robot_type == "lekiwi":
+            act.update({"x.vel": 0.0, "y.vel": 0.0, "theta.vel": 0.0})
+        
+        return act
+        
+    
+    #refresh robot state
+    def refresh_robot_state(self) -> None:
+        if not self.robot:
+            return
+            
+        try:
+            observation = self.robot.get_observation()
+            
+            if self.robot_type == "lekiwi":
+                # LeKiwi returns a state vector in observation.state
+                if "observation.state" in observation:
+                    state_vector = observation["observation.state"]
+                    # State order: arm_shoulder_pan.pos, arm_shoulder_lift.pos, arm_elbow_flex.pos, 
+                    #              arm_wrist_flex.pos, arm_wrist_roll.pos, arm_gripper.pos, x.vel, y.vel, theta.vel
+                    state_order = [
+                        "arm_shoulder_pan.pos", "arm_shoulder_lift.pos", "arm_elbow_flex.pos",
+                        "arm_wrist_flex.pos", "arm_wrist_roll.pos", "arm_gripper.pos",
+                        "x.vel", "y.vel", "theta.vel"
+                    ]
+                    
+                    for i, joint_name in enumerate(self.names_of_joint):
+                        pos_key = f"arm_{joint_name}.pos"
+                        if i < len(state_vector) and pos_key in state_order:
+                            idx = state_order.index(pos_key)
+                            norm_val = float(state_vector[idx])
+                            self.position_norm[joint_name] = norm_val
+                            self.position_norm[joint_name] = self.norm_to_deg(joint_name, norm_val)
+                else:
+                    # Fallback: try direct observation keys
+                    for joint_name in self.names_of_joint:
+                        pos_key = f"arm_{joint_name}.pos"
+                        if pos_key in observation:
+                            norm_val = observation[pos_key]
+                            self.position_norm[joint_name] = norm_val
+                            self.position_norm[joint_name] = self.norm_to_deg(joint_name, norm_val)
+            else:
+                # SO100/SO101: direct observation keys
+                for joint_name in self.names_of_joint:
+                    pos_key = f"{joint_name}.pos"
+                    if pos_key in observation:
+                        norm_val = observation[pos_key]
+                        self.position_norm[joint_name] = norm_val
+                        self.position_norm[joint_name] = self.norm_to_deg(joint_name, norm_val)
+            
+            # Update cartesian coordinates
+            fk_x, fk_z = self.kinematics.forward_kin(
+                self.position_deg["shoulder_lift"],
+                self.position_deg["elbow_flex"]
+            )
+            self.cartesian_MM = {"x": fk_x, "z": fk_z}
+            
+        except Exception as e:
+            logger.error(f"Failed to read robot state: {e}", exc_info=True)
+    
+    
+    
+    
+    #get the robot state in human readable state
+    def read_robot_human_state(self) -> dict[str,float]:
+        #
+        pos_deg = getattr(self,'position_deg', {name: 0.0 for name in getattr(self, 'name_of_joints', [])})
+        car_mm = getattr(self, 'cartesian_MM', {"x": 0.0, "z": 0.0})
+        human_robot_dict = {
+            "robot_rotation_clockwise_deg": pos_deg.get("shoulder_pan", 0.0) - 90,
+            "gripper_heights_mm": car_mm.get("z", 0.0),
+            "gripper_linear_position_mm": car_mm.get("x", 0.0),
+            "gripper_tilt_deg": (pos_deg.get("wrist_flex", 0.0) + pos_deg.get("shoulder_lift", 0.0) - pos_deg.get("elbow_flex", 0.0)),
+            "gripper_rotation_deg": pos_deg.get("wrist_roll", 0.0),
+            "gripper_openness_pct": pos_deg.get("gripper", 0.0),
+        }
+        return human_robot_dict
     
         
         
