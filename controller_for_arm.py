@@ -138,8 +138,38 @@ class ControlRobot:
         except Exception as e:
             logger.error(f'cant connect to robot: {e}'  )
             raise
+    
+    #disable read only 
+    def _read_only_mode(self) -> None:
+        try:
+            self._connect_robot
+            
+            if self.robot_type != 'lekiwi':
+                self.robot.bus.disable_torque()
+                logger.info(f'{self.robot_type} is in read only mode, torque is disabled')
+            else:
+                logger.info('you will have to manually disable for lewiki')
+        except Exception as e:
+            logger.error(f"can not _connect_robot failed so read only failed")
+            raise  
+    
+    #degree to normalized values
+    def degree_to_norm(self,joint_name,degrees) -> float:
+        norm_min, norm_max, deg_min, deg_max = self.motor_mapping[joint_name]
+        if deg_max == deg_min:
+            return norm_min
+        normalized_value = norm_min + ((degrees - deg_min) * (norm_max - norm_min)) / (deg_max - deg_min)
+        return normalized_value
+    
+    def norm_to_deg(self,joint_name,normalized) -> float:
+        norm_min, norm_max, deg_min, deg_max = self.motor_mapping[joint_name]
+        if norm_max == norm_min:
+            return deg_min
+        degree_value = deg_min + ((normalized - norm_min) * (deg_max - deg_min)) / (norm_max - norm_min)
+        return degree_value
         
-        
+    
+    
         
         
         
