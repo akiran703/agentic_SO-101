@@ -279,7 +279,6 @@ class ControlRobot:
     
     #get the robot state in human readable state
     def read_robot_human_state(self) -> dict[str,float]:
-        #
         pos_deg = getattr(self,'position_deg', {name: 0.0 for name in getattr(self, 'name_of_joints', [])})
         car_mm = getattr(self, 'cartesian_MM', {"x": 0.0, "z": 0.0})
         human_robot_dict = {
@@ -291,6 +290,28 @@ class ControlRobot:
             "gripper_openness_pct": pos_deg.get("gripper", 0.0),
         }
         return human_robot_dict
+    
+    #ensure all the states are valid
+    def get_all_valid_state(self) -> dict[str,Any]:
+        pos_deg = getattr(self,'position_deg', {})
+        pos_norm = getattr(self,'position_norm', {})
+        car_mm = getattr(self, 'cartesian_MM', {"x": 0.0, "z": 0.0})
+        all_state_dict = {   "joint_positions_deg": {name: round(pos, 1) for name, pos in pos_deg.items()},
+            "joint_positions_norm": {name: round(pos, 1) for name, pos in pos_norm.items()},
+            "cartesian_mm": {name: round(pos, 1) for name, pos in car_mm.items()},
+            "human_readable_state": {name: round(pos, 1) for name, pos in self.read_robot_human_state().items()}
+        }
+        return all_state_dict
+    
+    #get current robot state and pass it back to movement class
+    def get_current_robot_state(self) -> output_movement:
+        self.refresh_robot_state()
+        return output_movement(True, "updating with the current state of the robot", robot_state=self.get_all_valid_state())
+        
+    
+    
+    
+        
     
         
         
