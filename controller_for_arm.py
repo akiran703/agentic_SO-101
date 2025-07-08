@@ -307,9 +307,56 @@ class ControlRobot:
     def get_current_robot_state(self) -> output_movement:
         self.refresh_robot_state()
         return output_movement(True, "updating with the current state of the robot", robot_state=self.get_all_valid_state())
+    
+    #
+    def execute_interpolated_move():
+        return  
+    
+    #
+    def set_joints_absolute(self, positions_deg, use_interpolation) -> output_movement:
+        if not self.robot:
+            return output_movement(False, "Robot is not online", robot_state=self.get_all_valid_state())
+    
+        if self.read_only:
+            return output_movement(False, "Robot in read-only mode", robot_state=self.get_all_valid_state())
+                
+        # Filter valid joints
+        v_pos = {name: pos for name, pos in positions_deg.items() if name in self.names_of_joint}
+        if not v_pos:
+            return output_movement(True, "No valid joints to move", robot_state=self.get_all_valid_state())
+
+        # Validate that positions are within LeRobot's accepted ranges
+        is_valid, error_msg = self.check_if_validate_range(v_pos)
+        if not is_valid:
+            return output_movement(False, error_msg, robot_state=self.get_all_valid_state())
+
+        try:
+            if use_interpolation == True:
+                #have to create this func
+                self.execute_interpolated_move(v_pos)
+            else:
+                action = self.build_and_store_action(v_pos)
+                self.robot.send_action(action)
+            
+            # Update state optimistically
+            self.position_deg.update(v_pos)
+            for name, deg in v_pos.items():
+                self.position_norm[name] = self.degree_to_norm(name, deg)
+            
+            # Update cartesian if needed
+            if "shoulder_lift" in v_pos or "elbow_flex" in v_pos:
+                fk_x, fk_z = self.kinematics.forward_kin(
+                    self.position_deg["shoulder_lift"],
+                    self.position_deg["elbow_flex"]
+                )
+                self.cartesian_mm = {"x": fk_x, "z": fk_z}
+
+        except Exception as e:
+            logger.error(f"Move failed: {e}", exc_info=True)
+            self._refresh_state()
+            return output_movement(False, f"Move failed: {e}", robot_state=self.get_all_valid_state())
         
-    
-    
+        return output_movement(True, "Move completed", robot_state=self.get_all_valid_state())
     
         
     
