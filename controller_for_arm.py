@@ -308,11 +308,16 @@ class ControlRobot:
         self.refresh_robot_state()
         return output_movement(True, "updating with the current state of the robot", robot_state=self.get_all_valid_state())
     
-    #
-    def execute_interpolated_move():
+    #make sure the arm runs smoothly
+    def execute_interpolated_move(self):
+        if not self.robot:
+            return output_movement(False, "Robot is not online", robot_state=self.get_all_valid_state())
+    
+        if self.read_only:
+            return output_movement(False, "Robot in read-only mode", robot_state=self.get_all_valid_state())
         return  
     
-    #
+    #set the joints to absolute position
     def set_joints_absolute(self, positions_deg, use_interpolation) -> output_movement:
         if not self.robot:
             return output_movement(False, "Robot is not online", robot_state=self.get_all_valid_state())
