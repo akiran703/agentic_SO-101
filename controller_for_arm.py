@@ -67,7 +67,7 @@ class ControlRobot:
     def __init__(self,READ_ONLY: bool = False):
         #gets the robots 
         self.robot_type = robot_config.lerobot_config.get("type")
-        self.robot = None
+        self.robot: Optional[Robot] = None
         self.read_only = READ_ONLY
         
         
@@ -309,13 +309,37 @@ class ControlRobot:
         return output_movement(True, "updating with the current state of the robot", robot_state=self.get_all_valid_state())
     
     #make sure the arm runs smoothly
-    def execute_interpolated_move(self):
+    def execute_interpolated_move_set(self,target_positions):
         if not self.robot:
             return output_movement(False, "Robot is not online", robot_state=self.get_all_valid_state())
     
         if self.read_only:
             return output_movement(False, "Robot in read-only mode", robot_state=self.get_all_valid_state())
-        return  
+        
+        #store the start positions
+        start_positions = {}
+        for n in target_positions.keys():
+            start_positions[n] = self.positions_deg[n]
+        
+        #calculate the position that will change the most
+        max_change = max(abs(target_positions[name] - start_positions[name]) for name in target_positions.keys())
+        
+        steps = max(1, min(self.movement_constant["MAX_INTERPOLATION_STEPS"],int(max_change / self.movement_constant["DEGREES_PER_STEP"])))
+        
+        interpolated = {}
+        for i in range(1, steps + 1):
+            for n in target_positions.keys():
+                interpolated[n] = start_positions[n] + (target_positions[n] - start_positions[n]) * (i / steps)
+            
+            # Validate each interpolation step to avoid sending invalid commands
+            is_valid, _ = self.check_if_validate_range(interpolated)
+            if not is_valid:
+                logger.warning(f"Interpolation step {i}/{steps} would exceed range limits, stopping interpolation")
+                break
+                
+            action = self.build_and_store_action(interpolated)
+            self.robot.send_action(action)
+            time.sleep(self.movement_constant["STEP_DELAY_SECONDS"]) 
     
     #set the joints to absolute position
     def set_joints_absolute(self, positions_deg, use_interpolation) -> output_movement:
@@ -337,8 +361,7 @@ class ControlRobot:
 
         try:
             if use_interpolation == True:
-                #have to create this func
-                self.execute_interpolated_move(v_pos)
+                self.execute_interpolated_move_set(v_pos)
             else:
                 action = self.build_and_store_action(v_pos)
                 self.robot.send_action(action)
@@ -350,15 +373,12 @@ class ControlRobot:
             
             # Update cartesian if needed
             if "shoulder_lift" in v_pos or "elbow_flex" in v_pos:
-                fk_x, fk_z = self.kinematics.forward_kin(
-                    self.position_deg["shoulder_lift"],
-                    self.position_deg["elbow_flex"]
-                )
+                fk_x, fk_z = self.kinematics.forward_kin(self.position_deg["shoulder_lift"],self.position_deg["elbow_flex"])
                 self.cartesian_mm = {"x": fk_x, "z": fk_z}
 
         except Exception as e:
             logger.error(f"Move failed: {e}", exc_info=True)
-            self._refresh_state()
+            self.refresh_robot_state()
             return output_movement(False, f"Move failed: {e}", robot_state=self.get_all_valid_state())
         
         return output_movement(True, "Move completed", robot_state=self.get_all_valid_state())
