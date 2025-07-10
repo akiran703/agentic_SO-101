@@ -405,9 +405,10 @@ class ControlRobot:
         return result
     
     
-    def execute_intuitive_move(self, move_gripper_up_mm: Optional[float] = None, move_gripper_forward_mm: Optional[float] = None, tilt_gripper_down_angle: Optional[float] = None,
-        rotate_gripper_clockwise_angle: Optional[float] = None, rotate_robot_clockwise_angle: Optional[float] = None, use_interpolation: bool = True
-        ) -> output_movement:
+    def execute_intuitive_move(self,move_gripper_up_mm: Optional[float] = None,move_gripper_forward_mm: Optional[float] = None,
+        tilt_gripper_down_angle: Optional[float] = None,rotate_gripper_clockwise_angle: Optional[float] = None, rotate_robot_clockwise_angle: Optional[float] = None,
+        use_interpolation: bool = True) -> output_movement:
+        
         if self.read_only:
             return output_movement(False, "Robot in read-only mode", robot_state=self.get_all_valid_state())
             
