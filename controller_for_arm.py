@@ -6,9 +6,9 @@ import math
 import os
 import time
 
-from lerobot.common.robots import Robot
-from lerobot.common.robots.so100_follower import SO100Follower, SO100FollowerConfig
-from lerobot.common.robots.so101_follower import SO101Follower, SO101FollowerConfig
+from lerobot.robots import Robot
+from lerobot.robots.so100_follower import SO100Follower, SO100FollowerConfig
+from lerobot.robots.so101_follower import SO101Follower, SO101FollowerConfig
 
 
 from config_robot import robot_config
@@ -382,6 +382,71 @@ class ControlRobot:
             return output_movement(False, f"Move failed: {e}", robot_state=self.get_all_valid_state())
         
         return output_movement(True, "Move completed", robot_state=self.get_all_valid_state())
+
+    #if I want to control the robot with keyboard and make movements this function will do calculations to make those changes
+    def update_joints_with_delta(self, delta_deg) -> output_movement:
+        if self.read_only:
+            return output_movement(False, "Robot in read-only mode", robot_state=self.get_all_valid_state())
+        
+        tp = {}
+        warnings = []
+        
+        for jn, d in delta_deg.items():
+            if jn not in self.names_of_joint:
+                warnings.append(f"Unknown joint '{jn}' ignored.")
+                continue
+            tp[jn] = self.position_deg[jn] + d
+        
+        if not tp:
+            return output_movement(False, "The joint cant be modified.", warnings, self.get_all_valid_state())
+        
+        result = self.set_joints_absolute(tp)
+        result.warnings.extend(warnings)
+        return result
+    
+    
+    def execute_intuitive_move(self, move_gripper_up_mm: Optional[float] = None, move_gripper_forward_mm: Optional[float] = None, tilt_gripper_down_angle: Optional[float] = None,
+        rotate_gripper_clockwise_angle: Optional[float] = None, rotate_robot_clockwise_angle: Optional[float] = None, use_interpolation: bool = True
+        ) -> output_movement:
+        if self.read_only:
+            return output_movement(False, "Robot in read-only mode", robot_state=self.get_all_valid_state())
+            
+        tp = self.position_deg.copy()
+        
+        # Handle cartesian movements
+        if move_gripper_up_mm is not None or move_gripper_forward_mm is not None:
+            target_x = self.cartesian_MM["x"] + (move_gripper_forward_mm or 0.0)
+            target_z = self.cartesian_MM["z"] + (move_gripper_up_mm or 0.0)
+            
+            # Validate target
+            is_valid, mg = self.kinematics.is_valid_target_cart(target_x, target_z)
+            if not is_valid:
+                return output_movement(False, f"Invalid target: {mg}", robot_state=self.get_all_valid_state())
+            
+            try:
+                sl_target, ef_target = self.kinematics.inverse_kin(target_x, target_z)
+                tp["shoulder_lift"] = sl_target
+                tp["elbow_flex"] = ef_target
+                
+                # Wrist compensation
+                sl_change = sl_target - self.position_deg["shoulder_lift"]
+                ef_change = ef_target - self.position_deg["elbow_flex"]
+                tp["wrist_flex"] = self.position_deg["wrist_flex"] - (sl_change - ef_change)
+                
+            except Exception as e:
+                return output_movement(False, f"Kinematics error: {e}", robot_state=self.get_all_valid_state())
+        
+        # Handle direct joint movements
+        if tilt_gripper_down_angle is not None:
+            tp["wrist_flex"] += tilt_gripper_down_angle
+        if rotate_gripper_clockwise_angle is not None:
+            tp["wrist_roll"] += rotate_gripper_clockwise_angle
+        if rotate_robot_clockwise_angle is not None:
+            tp["shoulder_pan"] += rotate_robot_clockwise_angle
+        
+        return self.set_joints_absolute(tp, use_interpolation)
+        
+    
     
         
     
