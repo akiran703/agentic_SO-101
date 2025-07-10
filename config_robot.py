@@ -5,7 +5,7 @@ Configuration for the robot controller. has some preset data to keep robot in de
 import os
 from dataclasses import dataclass, field
 from typing import Dict, Tuple
-from lerobot.common.robot_devices.cameras.configs import OpenCVCameraConfig, CameraConfig
+from lerobot.cameras.opencv.configuration_opencv import OpenCVCameraConfig
 
 
 @dataclass
