@@ -404,7 +404,7 @@ class ControlRobot:
         result.warnings.extend(warnings)
         return result
     
-    
+    #function that executes the movements to the joints
     def execute_intuitive_move(self,move_gripper_up_mm: Optional[float] = None,move_gripper_forward_mm: Optional[float] = None,
         tilt_gripper_down_angle: Optional[float] = None,rotate_gripper_clockwise_angle: Optional[float] = None, rotate_robot_clockwise_angle: Optional[float] = None,
         use_interpolation: bool = True) -> output_movement:
@@ -446,7 +446,77 @@ class ControlRobot:
             tp["shoulder_pan"] += rotate_robot_clockwise_angle
         
         return self.set_joints_absolute(tp, use_interpolation)
+    
+    #execute a applied preset location
+    def apply_named_preset(self, pk) -> output_movement:
+        if self.read_only:
+            return output_movement(False, "Robot in read-only mode", robot_state=self.get_all_valid_state())
+            
+        if pk not in self.presets:
+            return output_movement(False, f"Unknown preset: '{pk}'", robot_state=self.get_all_valid_state())
         
+        pp = self.presets[pk]
+        logger.info(f"Applying preset '{pk}': {pp}")
+        return self.set_joints_absolute(pp)
+    
+    #returns pictures from observations
+    def get_camera_images(self) -> Dict[str, np.ndarray]:
+        if not self.robot:
+            return {}
+            
+        try:
+            observation = self.robot.get_observation()
+            camera_images = {}
+            
+            if self.robot_type == "lekiwi":
+                # LeKiwi returns images with observation.images. prefix and as torch tensors
+                for key, value in observation.items():
+                    if key.startswith("observation.images."):
+                        camera_name = key.replace("observation.images.", "")
+                        # torch tensor
+                        if hasattr(value, 'numpy'):  
+                            camera_images[camera_name] = value.numpy()
+                        elif isinstance(value, np.ndarray):
+                            camera_images[camera_name] = value
+            else:
+                # SO100/SO101: direct camera names as numpy arrays
+                camera_names = list(robot_config.lerobot_config.get("cameras", {}).keys())
+                camera_images = {
+                    key: value for key, value in observation.items()
+                    if key in camera_names and isinstance(value, np.ndarray) and value.ndim == 3
+                }
+            
+            return camera_images
+        except Exception as e:
+            logger.error(f"Error getting camera images: {e}", exc_info=True)
+            return {}
+
+    
+    #disconnect the robot, function can also set it to rest position with previous apply_name_function
+    def disconnect(self, reset_pos: bool = True) -> None:
+        if not self.robot:
+            return
+            
+        logger.info("Disconnecting robot...")
+        
+        # Don't move to rest position in read-only mode
+        if reset_pos and not self.read_only:
+            try:
+                result = self.apply_named_preset("1")
+                if not result.ok:
+                    logger.warning(f"Rest position failed: {result.msg}")
+            except Exception as e:
+                logger.error(f"Error during rest position: {e}", exc_info=True)
+        elif reset_pos and self.read_only:
+            logger.info("In read-only mode, so cant reset")
+        
+        try:
+            self.robot.disconnect()
+            logger.info("Robot disconnected successfully")
+        except Exception as e:
+            logger.error(f"Error during disconnect: {e}", exc_info=True)
+        finally:
+            self.robot = None
     
     
         
