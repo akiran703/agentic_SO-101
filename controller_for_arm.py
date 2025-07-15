@@ -10,7 +10,7 @@ from lerobot.robots.so101_follower import SO101Follower, SO101FollowerConfig
 from lerobot.robots.lekiwi import LeKiwiClient, LeKiwiClientConfig
 
 #---------------------------written classes------------------
-from config import robot_config
+from config_robot import robot_config
 from only_kin import KinematicsM
 
 # Configure logging only if not already configured
@@ -70,20 +70,28 @@ class RobotController:
         )
         self.kinematics = KinematicsM(param=kinematic_params)
         
-        # State tracking
-        self.positions_deg: Dict[str, float] = {name: 0.0 for name in self.names_of_joint}
-        self.positions_norm: Dict[str, float] = {name: 0.0 for name in self.names_of_joint}
+        #positions in deg 
+        self.positions_deg: Dict[str, float] = {}
+        for name in self.names_of_joint:
+            self.positions_deg[name] = 0.0
+        #position
+        self.positions_norm: Dict[str, float] = {}
+        for name in self.names_of_joint:
+             self.positions_norm[name]= 0.0 
+        #set up cartesian
         self.cartesian_mm: Dict[str, float] = {"x": 0.0, "z": 0.0}
         
+        
+                
         if read_only:
             # In read-only mode, connect and disable torque for manual movement
             logger.info("Initializing in READ-ONLY mode")
-            self._connect_robot_readonly()
-            self._refresh_state()
+            self.connect_and_readonly()
+            self.refresh_state()
         else:
             # Normal mode - full initialization
-            self._connect_robot()
-            self._refresh_state()
+            self.connect_robot()
+            self.refresh_state()
 
         logger.info(f"RobotController initialized. Type: {self.robot_type}, Read-only: {read_only}")
 
@@ -92,3 +100,45 @@ class RobotController:
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.disconnect(reset_pos=True)
+    
+     #connect to robot   
+    def connect_robot(self) -> None:
+        keys_to_exclude = ["type"]
+
+        if self.robot_type == "lekiwi":
+            keys_to_exclude.append("port")
+        else:
+            keys_to_exclude.append("remote_ip")
+
+        robot_params = {}
+        for k, v in robot_config.lerobot_config.items():
+            if k not in keys_to_exclude:
+                robot_params[k] = v
+        
+         #using lerobot factory create config
+        try:
+            robot_class, config_class = self.ROBOT_TYPES.get(self.robot_type, (None, None))
+            if not robot_class:
+                raise ValueError(f"Unsupported robot type: '{self.robot_type}'")
+            
+            cfg = config_class(**robot_params)
+            self.robot = robot_class(cfg)
+            self.robot.connect()
+            logger.info(f"Connected to {self.robot_type}")
+        except Exception as e:
+            logger.error(f"Failed to connect to robot: {e}")
+            raise
+    
+    #disabled torque and reads metrics of arm       
+    def connect_and_readonly(self) -> None:
+        try:
+            self.connect_robot()
+
+            if self.robot_type != "lekiwi":
+                self.robot.bus.disable_torque()
+                logger.info(f"Connected to {self.robot_type} in READ-ONLY mode 🔓 TORQUE DISABLED: Robot can now be moved manually while monitoring positions")      
+            else:
+                logger.warning("LeKiwi is not supported")
+        except Exception as e:
+            logger.error(f"Failed to connect to robot in read-only mode womp womp: {e}")
+            raise
