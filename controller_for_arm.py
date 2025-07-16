@@ -337,4 +337,164 @@ class RobotController:
         
         return MoveResult(True, "Move completed", robot_state=self.get_full_state())
 
+     #make sure movements are smooth
     def interpolated_movement(self, target_positions: Dict[str, float]) -> None:
+        if self.read_only:
+            raise RuntimeError("Arm is in read-only mode")
+            
+        if not self.robot:
+            raise RuntimeError("Arm not connected")
+            
+        start_positions = {}
+        for name in target_positions.keys():
+            start_positions[name] = self.positions_deg[name]
+        
+        max_change = None 
+        for name in target_positions.keys():
+            max_change = max(abs(target_positions[name] - start_positions[name]))
+       
+        
+        steps = max(1, min(self.movement_constant["MAX_INTERPOLATION_STEPS"],int(max_change / self.movement_constant["DEGREES_PER_STEP"])))
+        
+        interpolated = {}
+        for i in range(1, steps + 1):
+            for name in target_positions.keys():
+                interpolated[name] = start_positions[name] + (target_positions[name] - start_positions[name]) * (i / steps)
+               
+            
+            # Validate each interpolation step to avoid sending invalid commands
+            is_valid, error_msg = self.check_if_valid_position(interpolated)
+            if not is_valid:
+                logger.warning(f"Interpolation step {i}/{steps} would exceed range limits, stopping interpolation")
+                break
+                
+            action = self.build_and_store_action(interpolated)
+            self.robot.send_action(action)
+            time.sleep(self.movement_constant["STEP_DELAY_SECONDS"])
+
+    #increase the joints by delta 
+    def increment_joints_by_delta(self, deltas_deg: Dict[str, float]) -> MoveResult:
+        if self.read_only:
+            return MoveResult(False, "Cannot move arm in read-only mode", robot_state=self.get_full_state())
+            
+        target_positions = {}
+        warnings = []
+        
+        for joint_name, delta in deltas_deg.items():
+            if joint_name not in self.names_of_joint:
+                warnings.append(f"Unknown joint '{joint_name}' ignored.")
+                continue
+            target_positions[joint_name] = self.positions_deg[joint_name] + delta
+        
+        if not target_positions:
+            return MoveResult(False, "No valid joints for increment.", warnings, self.get_full_state())
+        
+        result = self.set_joints_absolute(target_positions)
+        result.warnings.extend(warnings)
+        return result
+
+    
+    #execute
+    def execute_interpolated(self,move_gripper_up_mm: Optional[float] = None,move_gripper_forward_mm: Optional[float] = None,
+        tilt_gripper_down_angle: Optional[float] = None, rotate_gripper_clockwise_angle: Optional[float] = None,
+        rotate_robot_right_angle: Optional[float] = None,use_interpolation: bool = True) -> MoveResult:
+        
+        if self.read_only:
+            return MoveResult(False, "Cannot move robot in read-only mode", robot_state=self.get_full_state())
+            
+        target_positions = self.positions_deg.copy()
+        
+        # Handle cartesian movements
+        if move_gripper_up_mm is not None or move_gripper_forward_mm is not None:
+            target_x = self.cartesian_mm["x"] + (move_gripper_forward_mm or 0.0)
+            target_z = self.cartesian_mm["z"] + (move_gripper_up_mm or 0.0)
+            
+            # Validate target
+            is_valid, msg = self.kinematics.is_valid_target_cart(target_x, target_z)
+            if not is_valid:
+                return MoveResult(False, f"Invalid target: {msg}", robot_state=self.get_full_state())
+            
+            try:
+                sl_target, ef_target = self.kinematics.inverse_kin(target_x, target_z)
+                target_positions["shoulder_lift"] = sl_target
+                target_positions["elbow_flex"] = ef_target
+                
+                # Wrist compensation
+                sl_change = sl_target - self.positions_deg["shoulder_lift"]
+                ef_change = ef_target - self.positions_deg["elbow_flex"]
+                target_positions["wrist_flex"] = self.positions_deg["wrist_flex"] - (sl_change - ef_change)
+                
+            except Exception as e:
+                return MoveResult(False, f"Kinematics error: {e}", robot_state=self.get_full_state())
+        
+        # Handle direct joint movements
+        if tilt_gripper_down_angle is not None:
+            target_positions["wrist_flex"] += tilt_gripper_down_angle
+        if rotate_gripper_clockwise_angle is not None:
+            target_positions["wrist_roll"] += rotate_gripper_clockwise_angle
+        if rotate_robot_right_angle is not None:
+            target_positions["shoulder_pan"] += rotate_robot_right_angle
+        
+        return self.set_joints_absolute(target_positions, use_interpolation)
+    
+    
+    #use a preset position 
+    def apply_named_preset(self, preset_key: str) -> MoveResult:
+        if self.read_only:
+            return MoveResult(False, "Cannot move robot in read-only mode", robot_state=self.get_full_state())
+            
+        if preset_key not in self.presets:
+            return MoveResult(False, f"Unknown preset: '{preset_key}'", robot_state=self.get_full_state())
+        
+        preset_positions = self.presets[preset_key]
+        logger.info(f"Applying preset '{preset_key}': {preset_positions}")
+        return self.set_joints_absolute(preset_positions)
+
+    
+    #takes a picture based when observing 
+    def get_camera_images(self) -> Dict[str, np.ndarray]:
+        if not self.robot:
+            return {}
+            
+        try:
+            observation = self.robot.get_observation()
+            camera_images = {}
+            
+         
+            # SO100/SO101: direct camera names as numpy arrays
+            camera_names = list(robot_config.lerobot_config.get("cameras", {}).keys())
+            camera_images = {}
+            for key, value in observation.items():
+                if key in camera_names and isinstance(value, np.ndarray) and value.ndim == 3:
+                    camera_images[key] = value
+            
+            return camera_images
+        except Exception as e:
+            logger.error(f"Error getting camera images: {e}", exc_info=True)
+            return {}
+
+    #disconnect
+    def disconnect(self, reset_pos: bool = True) -> None:
+        if not self.robot:
+            return
+            
+        logger.info("Disconnecting robot...")
+        
+        # Don't move to rest position in read-only mode
+        if reset_pos and not self.read_only:
+            try:
+                result = self.apply_named_preset("1")
+                if not result.ok:
+                    logger.warning(f"Rest position failed: {result.msg}")
+            except Exception as e:
+                logger.error(f"Error during rest position: {e}", exc_info=True)
+        elif reset_pos and self.read_only:
+            logger.info("Skipping rest position in read-only mode")
+        
+        try:
+            self.robot.disconnect()
+            logger.info("Robot disconnected successfully")
+        except Exception as e:
+            logger.error(f"Error during disconnect: {e}", exc_info=True)
+        finally:
+            self.robot = None
