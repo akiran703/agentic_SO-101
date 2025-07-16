@@ -142,3 +142,145 @@ class RobotController:
         except Exception as e:
             logger.error(f"Failed to connect to robot in read-only mode womp womp: {e}")
             raise
+    
+    #disabled torque and reads metrics of arm       
+    def connect_and_readonly(self) -> None:
+        try:
+            self.connect_robot()
+
+            if self.robot_type != "lekiwi":
+                self.robot.bus.disable_torque()
+                logger.info(f"Connected to {self.robot_type} in READ-ONLY mode 🔓 TORQUE DISABLED: Robot can now be moved manually while monitoring positions")      
+            else:
+                logger.warning("LeKiwi is not supported")
+        except Exception as e:
+            logger.error(f"Failed to connect to robot in read-only mode womp womp: {e}")
+            raise
+    
+    #degree to normalized values
+    def degree_to_norm(self, joint_name: str, degrees: float) -> float:
+        norm_min, norm_max, deg_min, deg_max = self.motor_mapping[joint_name]
+        if deg_max == deg_min:
+            return norm_min
+        ans = norm_min + ((degrees - deg_min) * (norm_max - norm_min)) / (deg_max - deg_min)
+        return ans
+
+    #normalized values to degree
+    def norm_to_deg(self, joint_name: str, normalized: float) -> float:
+        """Convert normalized value to degrees."""
+        norm_min, norm_max, deg_min, deg_max = self.motor_mapping[joint_name]
+        if norm_max == norm_min:
+            return deg_min
+        degree_value = deg_min + ((normalized - norm_min) * (deg_max - deg_min)) / (norm_max - norm_min)
+        return degree_value
+
+    #check if the target postion is capable of being executed 
+    def check_if_valid_position(self, positions_deg: Dict[str, float]) -> tuple[bool, str]:
+    
+        errors = []
+        
+        for jn, dv in positions_deg.items():
+            if jn not in self.motor_mapping:
+                continue
+                
+            norm_value = self.degree_to_norm(jn, dv)
+
+            if jn == "gripper":
+                norm_min, norm_max = 0, 100
+            else:
+                norm_min, norm_max = -100, 100
+            
+            # Handle inverted ranges (where norm_min > norm_max)
+            actual_min = min(norm_min, norm_max)
+            actual_max = max(norm_min, norm_max)
+            
+            if norm_value < actual_min or norm_value > actual_max:
+                errors.append(f"{jn.replace('_', ' ').title()} position {dv:.1f}° " f"(normalized: {norm_value:.1f}) is outside valid range "f"{actual_min:.1f} to {actual_max:.1f}")
+        
+        if errors:
+            return False, "Movement impossible - out of range: " + "; ".join(errors)
+        
+        return True, ""
+    
+    #we store the moves we want to make in lerobot
+    def build_and_store_action(self, positions_deg: Dict[str, float]) -> Dict[str, float]:
+        action = {}
+        
+        for name, deg in positions_deg.items():
+            norm_val = self.degree_to_norm(name, deg)
+            pos_key = f"{name}.pos"
+            action[pos_key] = norm_val
+                
+        return action
+
+    #refresh robot state
+    def refresh_state(self) -> None:
+        if not self.robot:
+            return
+            
+        try:
+            observation = self.robot.get_observation()
+        
+            # SO100/SO101: direct observation keys
+            for joint_name in self.names_of_joint:
+                    pos_key = f"{joint_name}.pos"
+                    if pos_key in observation:
+                        norm_val = observation[pos_key]
+                        self.positions_norm[joint_name] = norm_val
+                        self.positions_deg[joint_name] = self.norm_to_deg(joint_name, norm_val)
+            
+            # Update cartesian coordinates
+            fk_x, fk_z = self.kinematics.forward_kin(self.positions_deg["shoulder_lift"],self.positions_deg["elbow_flex"])
+            
+            self.cartesian_mm = {"x": fk_x, "z": fk_z}
+            
+        except Exception as e:
+            logger.error(f"Failed to read robot state: {e}", exc_info=True)
+
+    #get the robot state in human readable state
+    def convert_to_human_readable(self) -> Dict[str, float]:
+        positions_deg = getattr(self, 'positions_deg', {name: 0.0 for name in getattr(self, 'names_of_joint', [])})
+        cartesian_mm = getattr(self, 'cartesian_mm', {"x": 0.0, "z": 0.0})
+        ans = {}
+        
+        ans['robot_rotation_clockwise_deg'] = positions_deg.get("shoulder_pan", 0.0) - 90
+        ans['gripper_heights_mm'] = cartesian_mm.get("z", 0.0)
+        ans['gripper_linear_position_mm'] = cartesian_mm.get("x", 0.0)
+        ans['gripper_tilt_deg'] = positions_deg.get("wrist_flex", 0.0)+ positions_deg.get("shoulder_lift", 0.0) -  positions_deg.get("elbow_flex", 0.0)
+        ans['gripper_rotation_deg'] = positions_deg.get("wrist_roll", 0.0)
+        ans['gripper_openness_pct'] = positions_deg.get("gripper", 0.0)
+        
+        return ans
+
+    #ensure all the states are valid
+    def _get_full_state(self) -> Dict[str, Any]:
+        # Ensure all state dictionaries exist
+        positions_deg = getattr(self, 'positions_deg', {})
+        positions_norm = getattr(self, 'positions_norm', {})
+        cartesian_mm = getattr(self, 'cartesian_mm', {"x": 0.0, "z": 0.0})
+        
+        ans = {}
+        jpddict = {}
+        jpndict = {}
+        catdict = {}
+        hrsdict = {}
+        
+        for name, pos in positions_deg.items():
+            jpddict[name] = round(pos, 1)
+        
+        for name, pos in positions_norm.items():
+            jpndict[name] = round(pos, 1)
+        
+        for name, pos in cartesian_mm.items():
+            catdict[name] = round(pos, 1)
+            
+        for name, pos in self.convert_to_human_readable().items():
+            hrsdict[name] = round(pos, 1)
+        
+        ans["joint_positions_deg"] = jpddict
+        ans["joint_positions_norm"] = jpndict
+        ans["cartesian_mm"] = catdict
+        ans["human_readable_state"] = hrsdict
+        
+
+        return ans
