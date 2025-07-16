@@ -336,3 +336,5 @@ class RobotController:
             return MoveResult(False, f"Move failed: {e}", robot_state=self.get_full_state())
         
         return MoveResult(True, "Move completed", robot_state=self.get_full_state())
+
+    def interpolated_movement(self, target_positions: Dict[str, float]) -> None:
