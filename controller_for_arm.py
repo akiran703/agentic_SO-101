@@ -253,7 +253,7 @@ class RobotController:
         return ans
 
     #ensure all the states are valid
-    def _get_full_state(self) -> Dict[str, Any]:
+    def get_full_state(self) -> Dict[str, Any]:
         # Ensure all state dictionaries exist
         positions_deg = getattr(self, 'positions_deg', {})
         positions_norm = getattr(self, 'positions_norm', {})
@@ -315,7 +315,7 @@ class RobotController:
 
         try:
             if use_interpolation:
-                self._execute_interpolated_move(valid_positions)
+                self.interpolated_move(valid_positions)
             else:
                 action = self.build_and_store_action(valid_positions)
                 self.robot.send_action(action)
@@ -323,7 +323,7 @@ class RobotController:
             # Update state optimistically
             self.positions_deg.update(valid_positions)
             for name, deg in valid_positions.items():
-                self.positions_norm[name] = self._deg_to_norm(name, deg)
+                self.positions_norm[name] = self.degree_to_norm(name, deg)
             
             # Update cartesian if needed
             if "shoulder_lift" in valid_positions or "elbow_flex" in valid_positions:
