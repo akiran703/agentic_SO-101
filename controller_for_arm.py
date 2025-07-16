@@ -284,3 +284,55 @@ class RobotController:
         
 
         return ans
+
+     #get current robot state and pass it back to movement class
+    def get_current_robot_state(self) -> MoveResult:
+        self.refresh_state()
+        return MoveResult(True, "Current robot state retrieved.", robot_state=self.get_full_state())
+
+    #set points absolute 
+    def set_joints_absolute(self, positions_deg: Dict[str, float], use_interpolation: bool = True) -> MoveResult:
+        if self.read_only:
+            return MoveResult(False, "Arm in read-only mode", robot_state=self.get_full_state())
+            
+        if not self.robot:
+            return MoveResult(False, "Arm not connected", robot_state=self.get_full_state())
+        
+        # Filter valid joints
+        valid_positions = {}
+        for name, pos in positions_deg.items():
+            if name in self.names_of_joint:
+                valid_positions[name] = pos
+            
+        
+        if not valid_positions:
+            return MoveResult(True, "No valid joints to move", robot_state=self.get_full_state())
+
+        # Validate that positions are within LeRobot's accepted ranges
+        is_valid, error_msg = self.check_if_valid_position(valid_positions)
+        if not is_valid:
+            return MoveResult(False, error_msg, robot_state=self.get_full_state())
+
+        try:
+            if use_interpolation:
+                self._execute_interpolated_move(valid_positions)
+            else:
+                action = self.build_and_store_action(valid_positions)
+                self.robot.send_action(action)
+            
+            # Update state optimistically
+            self.positions_deg.update(valid_positions)
+            for name, deg in valid_positions.items():
+                self.positions_norm[name] = self._deg_to_norm(name, deg)
+            
+            # Update cartesian if needed
+            if "shoulder_lift" in valid_positions or "elbow_flex" in valid_positions:
+                fk_x, fk_z = self.kinematics.forward_kin(self.positions_deg["shoulder_lift"],self.positions_deg["elbow_flex"])
+                self.cartesian_mm = {"x": fk_x, "z": fk_z}
+
+        except Exception as e:
+            logger.error(f"Move failed: {e}", exc_info=True)
+            self.refresh_state()
+            return MoveResult(False, f"Move failed: {e}", robot_state=self.get_full_state())
+        
+        return MoveResult(True, "Move completed", robot_state=self.get_full_state())
