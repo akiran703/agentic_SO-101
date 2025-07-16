@@ -449,7 +449,6 @@ class RobotController:
         preset_positions = self.presets[preset_key]
         logger.info(f"Applying preset '{preset_key}': {preset_positions}")
         return self.set_joints_absolute(preset_positions)
-
     
     #takes a picture based when observing 
     def get_camera_images(self) -> Dict[str, np.ndarray]:
