@@ -70,8 +70,74 @@ class KeyboardController:
         self.key_mappings[keyboard.KeyCode.from_char('2')] = ("preset", "2")
         self.key_mappings[keyboard.KeyCode.from_char('3')] =  ("preset", "3")
         self.key_mappings[keyboard.KeyCode.from_char('4')] = ("preset", "4")
+    
+    
         
+    def on_press(self, key: Any) -> bool:
+        
+        if key == keyboard.Key.esc:
+            self.stop()
+            return False  # Stop listener
 
+        if key in self.key_mappings:
+            action_type, params = self.key_mappings[key]
+            
+            try:
+                if action_type == "intuitive_move":
+                    result = self.robot.execute_interpolated(**params, use_interpolation=False)
+                    if not result.ok:
+                        print(f"Movement error: {result.msg}")
+                        
+                elif action_type == "gripper_delta":
+                    delta = params
+                    result = self.robot.increment_joints_by_delta({'gripper': delta})
+                    if not result.ok:
+                        print(f"Gripper error: {result.msg}")
+                        
+                elif action_type == "preset":
+                    preset_key = params
+                    result = self.robot.apply_named_preset(preset_key)
+                    if result.ok:
+                        print(f"Applied preset {preset_key}")
+                    else:
+                        print(f"Preset error: {result.msg}")
+                        
+                elif action_type == "camera_snapshot":
+                    self.take_camera_snapshot()
+                    
+            except Exception as e:
+                logger.error(f"Error executing command: {e}", exc_info=True)
+                
+        return True
+
+    
+    
+    def take_camera_snapshot(self) -> None:
+        try:
+            images = self.robot.get_camera_images()
+            if not images:
+                print("No camera images available")
+                return
+                
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            saved_count = 0
+            
+            for camera_name, img_array in images.items():
+                try:
+                    pil_img = Image.fromarray(img_array)
+                    filename = os.path.join(self.snapshots_dir, f"{camera_name}_{timestamp}.jpg")
+                    pil_img.save(filename)
+                    saved_count += 1
+                    print(f"Saved {camera_name} snapshot: {filename}")
+                except Exception as e:
+                    logger.error(f"Failed to save snapshot for '{camera_name}': {e}")
+                    
+            if saved_count > 0:
+                print(f"📸 Saved {saved_count} camera snapshot(s) to {self.snapshots_dir}/")
+                
+        except Exception as e:
+            logger.error(f"Camera snapshot error: {e}", exc_info=True)
+            print("Failed to take camera snapshot")
    
 def main():
     #executes all with error handling 
