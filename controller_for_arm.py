@@ -315,7 +315,7 @@ class RobotController:
 
         try:
             if use_interpolation:
-                self.interpolated_move(valid_positions)
+                self.interpolated_movement(valid_positions)
             else:
                 action = self.build_and_store_action(valid_positions)
                 self.robot.send_action(action)
@@ -349,9 +349,11 @@ class RobotController:
         for name in target_positions.keys():
             start_positions[name] = self.positions_deg[name]
         
-        max_change = None 
-        for name in target_positions.keys():
-            max_change = max(abs(target_positions[name] - start_positions[name]))
+        max_change = max(abs(target_positions[name] - start_positions[name]) for name in target_positions.keys())
+        steps = max(1, min(
+            self.movement_constant["MAX_INTERPOLATION_STEPS"],
+            int(max_change / self.movement_constant["DEGREES_PER_STEP"])
+        ))
        
         
         steps = max(1, min(self.movement_constant["MAX_INTERPOLATION_STEPS"],int(max_change / self.movement_constant["DEGREES_PER_STEP"])))
