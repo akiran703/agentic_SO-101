@@ -10,7 +10,7 @@ import logging
 from datetime import datetime
 from typing import Dict, Any
 from pynput import keyboard
-from robot_controller import RobotController
+from controller_for_arm import RobotController
 from PIL import Image
 
 # Configure logging
@@ -59,8 +59,8 @@ class KeyboardController:
         self.key_mappings[keyboard.KeyCode.from_char('d')] =  ("intuitive_move", {"rotate_gripper_clockwise_angle": self.angle_step_deg})
             
         # Gripper control
-        self.key_mappings[keyboard.KeyCode.from_char('q')] =  ("gripper_delta", self.gripper_step_pct),  # Open incrementally
-        self.key_mappings[keyboard.KeyCode.from_char('e')] = ("gripper_delta", -self.gripper_step_pct), # Close incrementally
+        self.key_mappings[keyboard.KeyCode.from_char('q')] =  ("gripper_delta", self.gripper_step_pct)  # Open incrementally
+        self.key_mappings[keyboard.KeyCode.from_char('e')] = ("gripper_delta", -self.gripper_step_pct) # Close incrementally
 
         # Camera snapshot
         self.key_mappings[keyboard.KeyCode.from_char('c')] = ("camera_snapshot", None)
@@ -72,7 +72,7 @@ class KeyboardController:
         self.key_mappings[keyboard.KeyCode.from_char('4')] = ("preset", "4")
     
     
-        
+    #handles the events of when a key is pressed    
     def on_press(self, key: Any) -> bool:
         
         if key == keyboard.Key.esc:
@@ -111,7 +111,6 @@ class KeyboardController:
         return True
 
     
-    
     def take_camera_snapshot(self) -> None:
         try:
             images = self.robot.get_camera_images()
@@ -138,7 +137,62 @@ class KeyboardController:
         except Exception as e:
             logger.error(f"Camera snapshot error: {e}", exc_info=True)
             print("Failed to take camera snapshot")
-   
+    
+    
+    #function to start keyboard control
+    def start(self) -> None:
+        # Print controls once at startup
+        print("\n" + "="*50)
+        print("🎮 KEYBOARD CONTROLLER ACTIVE")
+        print("="*50)
+        print("📍 CARTESIAN MOVEMENT:")
+        print(f"   W/S: Gripper Forward/Backward ({self.spatial_step_mm} mm)")
+        print(f"   ↑/↓: Gripper Up/Down ({self.spatial_step_mm} mm)")
+        print()
+        print("🔄 ROTATIONS:")
+        print(f"   ←/→: Rotate Robot CCW/CW ({self.angle_step_deg}°)")
+        print(f"   R/F: Tilt Gripper Up/Down ({self.angle_step_deg}°)")
+        print(f"   A/D: Rotate Gripper CCW/CW ({self.angle_step_deg}°)")
+        print()
+        print("🤏 GRIPPER:")
+        print(f"   Q/E: Open/Close ({self.gripper_step_pct}%)")
+        print()
+        print("📸 CAMERA & PRESETS:")
+        print("   C: Camera Snapshot")
+        print("   1-4: Preset Positions")
+        print()
+        print("⚠️  ESC: Exit")
+        print("="*50)
+        
+        self.running = True
+        try:
+            self.listener = keyboard.Listener(on_press=self.on_press)
+            self.listener.start()
+            print("✅ Keyboard controller started. Press keys to control robot.")
+        except Exception as e:
+            logger.error(f"Failed to start keyboard listener: {e}", exc_info=True)
+            self.running = False
+
+    #stop keyboard controller
+    def stop(self) -> None:
+        if self.running:
+            print("\n🛑 Stopping keyboard controller...")
+            self.running = False
+            if hasattr(self, 'listener') and self.listener.is_alive():
+                try:
+                    self.listener.stop()
+                except Exception as e:
+                    logger.error(f"Error stopping listener: {e}")
+
+    #makes sure it exists completely 
+    def wait_for_exit(self) -> None:
+        if hasattr(self, 'listener'):
+            try:
+                self.listener.join()
+            except Exception as e:
+                logger.error(f"Error waiting for listener: {e}")
+                
+                
 def main():
     #executes all with error handling 
     print("🚀 Starting Keyboard Controller...")
