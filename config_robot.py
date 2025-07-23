@@ -16,7 +16,7 @@ DEFAULT_REMOTE_IP: Final[str] = "192.168.1.1" # only for LeKiwi
 # Can also be different for different cameras, set it in lerobot_config
 DEFAULT_CAMERA_FPS: Final[int] = 30
 DEFAULT_CAMERA_WIDTH: Final[int] = 640
-DEFAULT_CAMERA_HEIGHT: Final[int] = 360
+DEFAULT_CAMERA_HEIGHT: Final[int] = 480
 
 @dataclass
 class RobotConfig:
@@ -30,7 +30,7 @@ class RobotConfig:
             "remote_ip": DEFAULT_REMOTE_IP,
             "cameras": {
                 "wrist": OpenCVCameraConfig(
-                    index_or_path=1,
+                    index_or_path=0,
                     fps=DEFAULT_CAMERA_FPS,
                     width=DEFAULT_CAMERA_WIDTH,
                     height=DEFAULT_CAMERA_HEIGHT,
