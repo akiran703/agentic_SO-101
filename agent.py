@@ -39,18 +39,54 @@ class AIAgent:
         
         if show_images and not IMAGE_VIEWER_AVAILABLE:
             print("⚠️  Image display requested but agent_utils.py not available")
-            
+    
+    #run the mcp tool           
+    async def execute_mcp_tool(self, tool_name: str, arguments: Dict[str, Any]) -> List[Dict[str, Any]]:
+        
+        if not self.session:
+            return [{"type": "text", "text": "Error: Not connected to MCP server"}]
+
+        try:
+            result = await self.session.call_tool(tool_name, arguments)
+            content_parts = []
+            image_count = 0
+
+            if hasattr(result.content, '__iter__') and not isinstance(result.content, (str, bytes)):
+                for item in result.content:
+                    if hasattr(item, 'data') and hasattr(item, 'mimeType'):
+                        image_count += 1
+                        content_parts.append(
+                        {
+                            "type": "image",
+                            "source": 
+                            {
+                                "type": "base64",
+                                "media_type": item.mimeType,
+                                "data": item.data
+                            }
+                        })
+                    elif hasattr(item, 'text'):
+                        content_parts.append({"type": "text", "text": item.text})
+                    else:
+                        content_parts.append({"type": "text", "text": str(item)})
+            else:
+                content_parts.append({"type": "text", "text": str(result.content)})
+
+            print(f"🔧 {tool_name}: returned {f'{image_count} images + ' if image_count else ''}text")
+            return content_parts
+
+        except Exception as e:
+            print(f"❌ Error executing {tool_name}: {str(e)}")
+            return [{"type": "text", "text": f"Error: {str(e)}"}]
     
     
-    
-    
+    #clean up 
     def cleanup(self):
-        """Clean up resources."""
         if self.image_viewer:
             self.image_viewer.cleanup()
 
+    #running cmd line interface
     async def run_cli(self):
-        """Run the command-line interface."""
         print(f"\n🤖 AI Agent with {self.llm_provider.provider_name}")
         print("=" * 50)
         print("Connecting to MCP server...")
