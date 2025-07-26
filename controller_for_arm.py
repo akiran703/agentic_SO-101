@@ -466,7 +466,12 @@ class RobotController:
             camera_names = list(robot_config.lerobot_config.get("cameras", {}).keys())
             camera_images = {}
             for key, value in observation.items():
-                if key in camera_names and isinstance(value, np.ndarray) and value.ndim == 3:
+                camera_name = key.replace("observation.images.", "")
+                
+                if camera_name in camera_names and isinstance(value, np.ndarray) and value.ndim == 3:
+                    camera_images[camera_name] = value
+                
+                elif key in camera_names and isinstance(value, np.ndarray) and value.ndim == 3:
                     camera_images[key] = value
             
             return camera_images
