@@ -103,6 +103,20 @@ def get_state_with_images(result_json: dict, is_movement: bool = False) -> List[
         logger.error(traceback.format_exc())
         # If camera access fails, still return state with empty image list
         return [result_json] + ["Error getting camera images"]
+    
+
+#-----------------------------------Function to process pictures saved---------------------------------
+
+
+#@mcp.tool(description="Once pictures have been taken and saved under the correct directory, analyze the pictures and determine if the DIMMs are seated correctly")
+#def analyze_pictures():
+    #make the api call to analyze the picture from the directory 
+    
+    #log the result 
+    #logger.info(f"MCP: get_robot_state outcome: {result_json.get("status", "success")}, Msg: {move_result.msg}")
+    #return get_state_with_images(result_json, is_movement=False)
+
+
 
 
 #------------------------------------Functions to just arm data-----------------------------------------
