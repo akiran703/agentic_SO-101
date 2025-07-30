@@ -43,3 +43,35 @@ class DetailedTestResult(unittest.TestResult):
         
     def addSkip(self, test, reason):
         super().addSkip(test, reason)
+
+
+    #fucntion to check if all packages are avaliable 
+    def check_dependencies() -> bool:
+        
+        print("🔍 Checking dependencies...")
+        
+        required_packages = [
+            'unittest',
+            'numpy',
+            'anthropic',
+            'google.genai',
+            'mcp',
+            'dotenv',
+            'PIL'
+        ]
+        
+        missing_packages = []
+        for package in required_packages:
+            try:
+                __import__(package)
+                print(f"  ✅ {package}")
+            except ImportError:
+                print(f"  ❌ {package} (missing)")
+                missing_packages.append(package)
+        
+        if missing_packages:
+            print(f"\n⚠️  Missing packages: {', '.join(missing_packages)}")
+            print("Install them with: pip install -r requirements.txt")
+            return False
+        
+        return True
