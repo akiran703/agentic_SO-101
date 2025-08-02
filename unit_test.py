@@ -88,11 +88,7 @@ def run_test_module(module_name: str) -> Tuple[DetailedTestResult, int]:
         suite.run(result)
         
         # Print results
-        tests_run = result.testsRun
-        successes = len(result.successes)
-        failures = len(result.failures)
-        errors = len(result.errors)
-        skipped = len(result.skipped)
+        tests_run,successes,failures,errors,skipped = result.testsRun,len(result.successes), len(result.failures),len(result.errors),len(result.skipped)
         
         print(f"\nResults for {module_name}:")
         print(f"  Tests run: {tests_run}")
@@ -100,6 +96,40 @@ def run_test_module(module_name: str) -> Tuple[DetailedTestResult, int]:
         print(f"  Failures: {failures}")
         print(f"  Errors: {errors}")
         print(f"  Skipped: {skipped}")
+        
+        
+        # Print failures and errors
+        if result.failures:
+            print(f"\n❌ FAILURES ({len(result.failures)}):")
+            for test, traceback in result.failures:
+                print(f"  - {test}: {traceback.split('AssertionError: ')[-1].split('\\n')[0]}")
+                
+        if result.errors:
+            print(f"\n💥 ERRORS ({len(result.errors)}):")
+            for test, traceback in result.errors:
+                error_msg = traceback.split('\\n')[-2] if '\\n' in traceback else traceback
+                print(f"  - {test}: {error_msg}")
+                
+        if result.skipped:
+            print(f"\n⏭️  SKIPPED ({len(result.skipped)}):")
+            for test, reason in result.skipped:
+                print(f"  - {test}: {reason}")
+        
+        # Print timing for slow tests
+        slow_tests = [(test, time) for test, time in result.test_timings.items() if time > 0.1]
+        if slow_tests:
+            print(f"\n⏱️  SLOW TESTS (>0.1s):")
+            for test, duration in sorted(slow_tests, key=lambda x: x[1], reverse=True)[:5]:
+                print(f"  - {test}: {duration:.3f}s")
+                
+        return result, tests_run
+    
+    except ImportError as e:
+        print(f"❌ Failed to import {module_name}: {e}")
+        return None, 0
+    except Exception as e:
+        print(f"💥 Error running {module_name}: {e}")
+        return None, 0
 
 def main():
         """Main test runner function."""
