@@ -237,3 +237,56 @@ class AIAgent:
             print(f"Make sure the MCP server is running at {self.mcp_url}")
         finally:
             self.cleanup()
+
+#
+async def main():
+    parser = argparse.ArgumentParser(description="AI Robot Agent with Native LLM APIs")
+    parser.add_argument("--api-key", 
+                       help="API key for the selected model (overrides env vars)")
+    parser.add_argument("--model", 
+                       default="claude-3-7-sonnet-latest", 
+                       help="Model to use (claude-3-7-sonnet-latest, gemini-2.5-flash, etc.)")
+    parser.add_argument("--show-images", 
+                       action="store_true", 
+                       help="Show images in window")
+    parser.add_argument("--mcp-server-ip", 
+                       default=os.getenv("MCP_SERVER_IP", "127.0.0.1"), 
+                       help="MCP server IP (or set MCP_SERVER_IP in .env)")
+    parser.add_argument("--mcp-port", 
+                       type=int, 
+                       default=int(os.getenv("MCP_PORT", "3001")), 
+                       help="MCP server port (or set MCP_PORT in .env)")
+    parser.add_argument("--thinking-budget", 
+                       type=int, 
+                       default=1024, 
+                       help="Thinking budget in tokens")
+    parser.add_argument("--thinking-every-n", 
+                       type=int, 
+                       default=3, 
+                       help="Use thinking every n steps")
+    
+    args = parser.parse_args()
+    
+    print(f"🔧 Configuration:")
+    print(f"   Model: {args.model}")
+    print(f"   MCP Server: {args.mcp_server_ip}:{args.mcp_port}")
+    print(f"   Thinking: Every {args.thinking_every_n} steps, budget {args.thinking_budget}")
+    print(f"   Show Images: {args.show_images}")
+    
+    try:
+        agent = AIAgent(
+            model=args.model,
+            show_images=args.show_images, 
+            mcp_server_ip=args.mcp_server_ip, 
+            mcp_port=args.mcp_port,
+            thinking_budget=args.thinking_budget, 
+            thinking_every_n=args.thinking_every_n,
+            api_key=args.api_key
+        )
+        await agent.run_cli()
+    except (ImportError, ValueError) as e:
+        print(f"❌ {str(e)}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    asyncio.run(main())
