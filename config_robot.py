@@ -30,7 +30,7 @@ class RobotConfig:
             "remote_ip": DEFAULT_REMOTE_IP,
             "cameras": {
                 "wrist": OpenCVCameraConfig(
-                    index_or_path=0,
+                    index_or_path=1,
                     fps=DEFAULT_CAMERA_FPS,
                     width=DEFAULT_CAMERA_WIDTH,
                     height=DEFAULT_CAMERA_HEIGHT,
@@ -100,10 +100,13 @@ You control a 3D printed robot with 5 DOF + gripper. Max forward reach ~250 mm.
 Shoulder and elbow links are 12 cm and 14 cm. Gripper fingers ~8 cm.
 Use these to estimate distances. E.g., if the object is near but not in the gripper, you can safely move 5–10 cm forward.
 
-Robot has 3 cameras:
-- front: at the base, looks forward
+Robot has 1 camera:
 - wrist: close view of gripper
-- top view: shows whole robot
+
+Robot is attached to the left side of a table. The dimensions of the table are the following: length is 100 cm and width is 60 cm.
+The table has a grid that makes breaking the environment down easier. There are 15 squares in total. There are 3 rows and 5 columns. The dimensions of each grid is 20cm by 20 cm.
+Items will generally be placed in the 3th and 4th column. The robot is always in column one. 
+
 
 Instructions:
 - Move slowly and iteratively
