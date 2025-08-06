@@ -77,8 +77,10 @@ class AIAgent:
         except Exception as e:
             print(f"❌ Error executing {tool_name}: {str(e)}")
             return [{"type": "text", "text": f"Error: {str(e)}"}]
+        
+    #remove images to reduce token usage
     def _filter_images_from_conversation(self, conversation: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Remove images from conversation to prevent token accumulation."""
+    
         filtered_conversation = []
         for msg in conversation:
             if isinstance(msg.get('content'), list):
@@ -101,8 +103,8 @@ class AIAgent:
                 filtered_conversation.append(msg)
         return filtered_conversation
 
+    #process user input with LLM
     async def process_with_llm(self, user_input: str) -> str:
-        """Process user input with LLM with full agent logic."""
         system_prompt = """You are an AI assistant with access to tools. 
         Use them as needed to control a robot and complete tasks.
         You can request more instruction and information using the tool.
