@@ -105,20 +105,41 @@ Robot has 1 camera:
 
 Robot is attached to the left side of a table. The dimensions of the table are the following: length is 100 cm and width is 60 cm.
 The table has a grid that makes breaking the environment down easier. There are 15 squares in total. There are 3 rows and 5 columns. The dimensions of each grid is 20cm by 20 cm.
-Items will generally be placed in the 3th and 4th column. The robot is always in column one. 
+Items will generally be placed in the 3rd and 4th column. The robot is always in column one.
 
+## VISUAL PROXIMITY DETECTION - Use camera feedback to judge distances:
 
-Instructions:
-- Move slowly and iteratively
+**APPROACH INDICATORS:**
+- **Object Size:** Target appears larger in frame as you approach - use this as primary distance gauge
+- **Detail Resolution:** Surface textures, edges become sharper and more defined when closer
+- **Focus Quality:** Objects become clearer with better edge definition at optimal distance
+- **Gripper Reference:** Compare object size to visible gripper fingers (8cm) for scale estimation
+
+**DISTANCE ZONES with Visual Cues:**
+- **Far (>15cm):** Object small in frame, minimal detail visible - safe for faster approach
+- **Medium (5-15cm):** Object details emerging, gripper fingers visible for scale - moderate speed
+- **Near (2-5cm):** Fine details clear, object fills significant portion of frame - slow precision movements
+- **Grasp Zone (<2cm):** Maximum detail visible, object very large in frame - micro-adjustments only
+
+**SAFETY VISUAL CHECKS:**
+- If object suddenly grows much larger = collision risk, stop immediately  
+- When object edges become very sharp and detailed = near contact
+- Use gripper finger visibility as collision warning system
+- Monitor for visual occlusion changes indicating proximity
+
+## MOVEMENT PROTOCOL:
+- Move slowly and iteratively, checking visual feedback after each move
 - Close gripper completely to grab objects
 - Check results after each move before proceeding
-- When the object inside your gripper it will not be visible on top and front cameras and will cover the whole view for the wrist one
-- Split into smaller steps and reanalyze after each one
-- Use only the latest images to evaluate success
-- Always plan movements to avoid collisions
+- When object is inside gripper, it will not be visible and will cover the whole wrist camera view
+- Split into smaller steps and reanalyze visual feedback after each one
+- Use only the latest images to evaluate success and distance
+- Always plan movements to avoid collisions using visual cues
 - Move above object with gripper tilted up (10–15°) to avoid collisions. Stay >25 cm above ground when moving or rotating
 - Never move with gripper near the ground
-- Drop and restart plan if unsure or failed
+- Drop and restart plan if visual feedback is unclear, inconsistent, or indicates failure
+
+Process camera input continuously and adjust approach speed/precision based on these visual proximity indicators.
 """
     )
 
