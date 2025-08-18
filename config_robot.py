@@ -35,6 +35,12 @@ class RobotConfig:
                     width=DEFAULT_CAMERA_WIDTH,
                     height=DEFAULT_CAMERA_HEIGHT,
                 ),
+                "top": OpenCVCameraConfig(
+                    index_or_path=0,
+                    fps=DEFAULT_CAMERA_FPS,
+                    width=DEFAULT_CAMERA_WIDTH,
+                    height=DEFAULT_CAMERA_HEIGHT,
+                ),
             },
         }
     )
@@ -85,7 +91,7 @@ class RobotConfig:
     # Predefined robot positions 
     PRESET_POSITIONS: Dict[str, Dict[str, float]] = field(
         default_factory=lambda: {
-            "1": { "gripper": 0.0, "wrist_roll": 90.0, "wrist_flex": 0.0, "elbow_flex": 0.0, "shoulder_lift": 0.0, "shoulder_pan": 90.0 },
+            "1": { "gripper": 0.0, "wrist_roll": 6.0, "wrist_flex": -5.5, "elbow_flex": -2.4, "shoulder_lift": -7.5, "shoulder_pan": 92.0 },
             "2": { "gripper": 0.0, "wrist_roll": 90.0, "wrist_flex": 0.0, "elbow_flex": 45.0, "shoulder_lift": 45.0, "shoulder_pan": 90.0 },
             "3": { "gripper": 40.0, "wrist_roll": 90.0, "wrist_flex": 90.0, "elbow_flex": 45.0, "shoulder_lift": 45.0, "shoulder_pan": 90.0 },
             "4": { "gripper": 40.0, "wrist_roll": 90.0, "wrist_flex": -60.0, "elbow_flex": 20.0, "shoulder_lift": 80.0, "shoulder_pan": 90.0 },
@@ -100,12 +106,13 @@ You control a 3D printed robot with 5 DOF + gripper. Max forward reach ~250 mm.
 Shoulder and elbow links are 12 cm and 14 cm. Gripper fingers ~8 cm.
 Use these to estimate distances. E.g., if the object is near but not in the gripper, you can safely move 5–10 cm forward.
 
-Robot has 1 camera:
+Robot has 2 cameras:
 - wrist: close view of gripper
+- top view: shows the whole robot and the whole environment that the robot is in 
 
 Robot is attached to the left side of a table. The dimensions of the table are the following: length is 100 cm and width is 60 cm.
 The table has a grid that makes breaking the environment down easier. There are 15 squares in total. There are 3 rows and 5 columns. The dimensions of each grid is 20cm by 20 cm.
-Items will generally be placed in the 3rd and 4th column. The robot is always in column one.
+Items will generally be placed in the 3rd and 4th column. The robot is always in column one, row one.
 
 ## VISUAL PROXIMITY DETECTION - Use camera feedback to judge distances:
 
@@ -127,6 +134,30 @@ Items will generally be placed in the 3rd and 4th column. The robot is always in
 - Use gripper finger visibility as collision warning system
 - Monitor for visual occlusion changes indicating proximity
 
+## SATA CABLE CONNECTION ASSESSMENT:
+
+When encountering SATA cables, analyze the connection quality:
+
+**Properly Seated SATA Connection:**
+- Connector fully inserted with no visible gap between connector and port
+- Plastic housing flush against device surface
+- No bent or damaged pins visible
+- Cable oriented correctly (not upside down or sideways)
+- Locking mechanism (if present) properly engaged
+
+**Improperly Seated SATA Connection:**
+- Visible gap at connection point between connector and port
+- Connector appears raised, tilted, or partially inserted
+- Pins visible that should be hidden when fully seated
+- Cable under tension or at unnatural angle
+- Misaligned orientation
+
+**SATA Assessment Protocol:**
+1. Classify connection as "PROPERLY_SEATED" or "IMPROPERLY_SEATED"
+2. Note confidence level based on visual clarity
+3. Identify specific visual indicators supporting classification
+4. If improperly seated, describe the specific issue observed
+
 ## MOVEMENT PROTOCOL:
 - Move slowly and iteratively, checking visual feedback after each move
 - Close gripper completely to grab objects
@@ -135,7 +166,6 @@ Items will generally be placed in the 3rd and 4th column. The robot is always in
 - Split into smaller steps and reanalyze visual feedback after each one
 - Use only the latest images to evaluate success and distance
 - Always plan movements to avoid collisions using visual cues
-- Move above object with gripper tilted up (10–15°) to avoid collisions. Stay >25 cm above ground when moving or rotating
 - Never move with gripper near the ground
 - Drop and restart plan if visual feedback is unclear, inconsistent, or indicates failure
 
