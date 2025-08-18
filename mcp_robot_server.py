@@ -221,7 +221,7 @@ def control_gripper(gripper_openness_pct):
         return {"status": "error", "message": f"Invalid gripper openness value: {str(e)}"}
 
 
-#------------------------------------Graceful shutdown------------------------------------------
+#------------------------------------shutdown------------------------------------------
 
 #disconnect
 def _cleanup():
