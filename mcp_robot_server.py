@@ -4,12 +4,16 @@ MCP server that host interactive functions to the arm
 
 from __future__ import annotations
 
+import time
 import io
 import logging
 from typing import List, Optional, Union
 
 import numpy as np
 from PIL import Image as PILImage
+
+from typing import Dict, Tuple,Any, Final
+from dataclasses import dataclass, field
 
 from mcp.server.fastmcp import FastMCP, Image
 
@@ -105,19 +109,6 @@ def get_state_with_images(result_json: dict, is_movement: bool = False) -> List[
         return [result_json] + ["Error getting camera images"]
     
 
-#-----------------------------------Function to process pictures saved---------------------------------
-
-
-#@mcp.tool(description="Once pictures have been taken and saved under the correct directory, analyze the pictures and determine if the DIMMs are seated correctly")
-#def analyze_pictures():
-    #make the api call to analyze the picture from the directory 
-    
-    #log the result 
-    #logger.info(f"MCP: get_robot_state outcome: {result_json.get("status", "success")}, Msg: {move_result.msg}")
-    #return get_state_with_images(result_json, is_movement=False)
-
-
-
 
 #------------------------------------Functions to just arm data-----------------------------------------
 
@@ -126,6 +117,7 @@ def get_state_with_images(result_json: dict, is_movement: bool = False) -> List[
 # @mcp.resource("robot://description")
 @mcp.tool(description="Get a description of the robot and instructions for the user. Run it before using any other tool.")
 def get_initial_instructions() -> str:
+    
     return robot_config.robot_description
 
 
@@ -136,6 +128,28 @@ def get_robot_state():
     result_json = move_result.to_json()
     logger.info(f"MCP: get_robot_state outcome: {result_json.get("status", "success")}, Msg: {move_result.msg}")
     return get_state_with_images(result_json, is_movement=False)
+
+
+
+#-----------------------------move to dimm inspection location-------------------------
+
+@mcp.tool(description="Move to the predfined locations of dimms and take pictures.You can pass 1, 2, 3, or 4 as a string into the parameters to get different angles.")
+def dimm_protocol(different_location):
+    DIMM_LOC = {
+            "1": { "gripper": 0, "wrist_roll": -22.0, "wrist_flex": 72.0, "elbow_flex": 135.0, "shoulder_lift": 144.0, "shoulder_pan": 103.0 },
+            "2": { "gripper": 0, "wrist_roll": -23.0, "wrist_flex": 50.0, "elbow_flex": 80.0, "shoulder_lift": 101.0, "shoulder_pan": 83.0 },
+            "3": { "gripper": 0, "wrist_roll": -3.0, "wrist_flex": -14.0, "elbow_flex": 0.0, "shoulder_lift": 61.0, "shoulder_pan": 94.0 },
+            "4": { "gripper": 0, "wrist_roll": -3.0, "wrist_flex": 98.0, "elbow_flex": 145.0, "shoulder_lift": 134.0, "shoulder_pan": 88.0 },
+        }
+
+    robot = get_robot()
+    move_result = robot.get_current_robot_state()
+    result_json = move_result.to_json()
+    different_location = str(different_location)
+    robot.set_joints_absolute(DIMM_LOC[different_location])
+    return get_state_with_images(result_json, is_movement=False)
+    
+
 
 
 #------------------------------------functions to move the arm------------------------------------------
