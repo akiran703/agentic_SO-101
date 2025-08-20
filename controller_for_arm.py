@@ -7,7 +7,7 @@ import time
 from lerobot.robots import Robot
 from lerobot.robots.so100_follower import SO100Follower, SO100FollowerConfig
 from lerobot.robots.so101_follower import SO101Follower, SO101FollowerConfig
-from lerobot.robots.lekiwi import LeKiwiClient, LeKiwiClientConfig
+
 
 #---------------------------written classes------------------
 from config_robot import robot_config
@@ -46,7 +46,7 @@ class MoveResult:
 
 class RobotController:
     # Robot type mapping
-    ROBOT_TYPES = {"so100": (SO100Follower, SO100FollowerConfig),"so101": (SO101Follower, SO101FollowerConfig),"lekiwi": (LeKiwiClient, LeKiwiClientConfig),}
+    ROBOT_TYPES = {"so100": (SO100Follower, SO100FollowerConfig),"so101": (SO101Follower, SO101FollowerConfig),}
 
     def __init__(self, read_only: bool = False):
         self.robot_type = robot_config.lerobot_config.get("type")
@@ -81,10 +81,9 @@ class RobotController:
         #set up cartesian
         self.cartesian_mm: Dict[str, float] = {"x": 0.0, "z": 0.0}
         
-        
-                
+    
+        # In read-only mode, connect and disable torque for manual movement
         if read_only:
-            # In read-only mode, connect and disable torque for manual movement
             logger.info("Initializing in READ-ONLY mode")
             self.connect_and_readonly()
             self.refresh_state()
@@ -105,10 +104,8 @@ class RobotController:
     def connect_robot(self) -> None:
         keys_to_exclude = ["type"]
 
-        if self.robot_type == "lekiwi":
-            keys_to_exclude.append("port")
-        else:
-            keys_to_exclude.append("remote_ip")
+      
+        keys_to_exclude.append("remote_ip")
 
         robot_params = {}
         for k, v in robot_config.lerobot_config.items():
@@ -134,11 +131,10 @@ class RobotController:
         try:
             self.connect_robot()
 
-            if self.robot_type != "lekiwi":
-                self.robot.bus.disable_torque()
-                logger.info(f"Connected to {self.robot_type} in READ-ONLY mode 🔓 TORQUE DISABLED: Robot can now be moved manually while monitoring positions")      
-            else:
-                logger.warning("LeKiwi is not supported")
+            
+            self.robot.bus.disable_torque()
+            logger.info(f"Connected to {self.robot_type} in READ-ONLY mode 🔓 TORQUE DISABLED: Robot can now be moved manually while monitoring positions")      
+        
         except Exception as e:
             logger.error(f"Failed to connect to robot in read-only mode womp womp: {e}")
             raise
@@ -186,7 +182,7 @@ class RobotController:
             norm_value = self.degree_to_norm(jn, dv)
 
             if jn == "gripper":
-                norm_min, norm_max = 0, 100
+                norm_min, norm_max = -20, 100
             else:
                 norm_min, norm_max = -100, 100
             
@@ -464,6 +460,8 @@ class RobotController:
          
             # SO100/SO101: direct camera names as numpy arrays
             camera_names = list(robot_config.lerobot_config.get("cameras", {}).keys())
+            print('heloooooooooo')
+            print(camera_names)
             camera_images = {}
             for key, value in observation.items():
                 camera_name = key.replace("observation.images.", "")
