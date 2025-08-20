@@ -15,8 +15,8 @@ DEFAULT_REMOTE_IP: Final[str] = "192.168.1.1" # only for LeKiwi
 # Camera configuration constants
 # Can also be different for different cameras, set it in lerobot_config
 DEFAULT_CAMERA_FPS: Final[int] = 30
-DEFAULT_CAMERA_WIDTH: Final[int] = 640
-DEFAULT_CAMERA_HEIGHT: Final[int] = 480
+DEFAULT_CAMERA_WIDTH: Final[int] = 1920
+DEFAULT_CAMERA_HEIGHT: Final[int] = 1080
 
 @dataclass
 class RobotConfig:
@@ -41,6 +41,8 @@ class RobotConfig:
                     width=DEFAULT_CAMERA_WIDTH,
                     height=DEFAULT_CAMERA_HEIGHT,
                 ),
+                
+                
             },
         }
     )
@@ -54,7 +56,7 @@ class RobotConfig:
             "elbow_flex":    (96.5, -92.7, 0, 180.0),
             "wrist_flex":    (-90.0, 90.0, -90.0, 90.0),
             "wrist_roll":    (100, -100, -90, 90),
-            "gripper":       (31.0, 100.0, 0.0, 100.0),
+            "gripper":       (0.0, 100.0, -31.0, 100.0),
         }
     )
 
@@ -91,85 +93,38 @@ class RobotConfig:
     # Predefined robot positions 
     PRESET_POSITIONS: Dict[str, Dict[str, float]] = field(
         default_factory=lambda: {
-            "1": { "gripper": 0.0, "wrist_roll": 6.0, "wrist_flex": -5.5, "elbow_flex": -2.4, "shoulder_lift": -7.5, "shoulder_pan": 92.0 },
-            "2": { "gripper": 0.0, "wrist_roll": 90.0, "wrist_flex": 0.0, "elbow_flex": 45.0, "shoulder_lift": 45.0, "shoulder_pan": 90.0 },
-            "3": { "gripper": 40.0, "wrist_roll": 90.0, "wrist_flex": 90.0, "elbow_flex": 45.0, "shoulder_lift": 45.0, "shoulder_pan": 90.0 },
-            "4": { "gripper": 40.0, "wrist_roll": 90.0, "wrist_flex": -60.0, "elbow_flex": 20.0, "shoulder_lift": 80.0, "shoulder_pan": 90.0 },
+            "1": { "gripper": 0, "wrist_roll": -3.0, "wrist_flex": 32.0, "elbow_flex": 29.0, "shoulder_lift": 58.0, "shoulder_pan": 89.0 },
+            "2": { "gripper": 0, "wrist_roll": -6.0, "wrist_flex": 84.0, "elbow_flex": 114.0, "shoulder_lift": 103.0, "shoulder_pan": 92.0 },
+            "3": { "gripper": 0, "wrist_roll": -35.0, "wrist_flex": 73.0, "elbow_flex": 92.0, "shoulder_lift": 111.6, "shoulder_pan": 88.0 },
+            "4": { "gripper": 0, "wrist_roll": 20.0, "wrist_flex": 73.0, "elbow_flex": 99.0, "shoulder_lift": 103.0, "shoulder_pan": 99.0 },
         }
     )
 
     # Robot description for AI/LLM context
     robot_description: str = ("""
-Follow these instructions precisely. Never deviate.
+Follow these instructions precisely. Never deviate. Do not make assumptions and stick with what the user told you to pick up. Just perform the actions.
 
 You control a 3D printed robot with 5 DOF + gripper. Max forward reach ~250 mm.
 Shoulder and elbow links are 12 cm and 14 cm. Gripper fingers ~8 cm.
 Use these to estimate distances. E.g., if the object is near but not in the gripper, you can safely move 5–10 cm forward.
 
+
 Robot has 2 cameras:
 - wrist: close view of gripper
-- top view: shows the whole robot and the whole environment that the robot is in 
+- top view: shows whole robot and environment
 
-Robot is attached to the left side of a table. The dimensions of the table are the following: length is 100 cm and width is 60 cm.
-The table has a grid that makes breaking the environment down easier. There are 15 squares in total. There are 3 rows and 5 columns. The dimensions of each grid is 20cm by 20 cm.
-Items will generally be placed in the 3rd and 4th column. The robot is always in column one, row one.
 
-## VISUAL PROXIMITY DETECTION - Use camera feedback to judge distances:
-
-**APPROACH INDICATORS:**
-- **Object Size:** Target appears larger in frame as you approach - use this as primary distance gauge
-- **Detail Resolution:** Surface textures, edges become sharper and more defined when closer
-- **Focus Quality:** Objects become clearer with better edge definition at optimal distance
-- **Gripper Reference:** Compare object size to visible gripper fingers (8cm) for scale estimation
-
-**DISTANCE ZONES with Visual Cues:**
-- **Far (>15cm):** Object small in frame, minimal detail visible - safe for faster approach
-- **Medium (5-15cm):** Object details emerging, gripper fingers visible for scale - moderate speed
-- **Near (2-5cm):** Fine details clear, object fills significant portion of frame - slow precision movements
-- **Grasp Zone (<2cm):** Maximum detail visible, object very large in frame - micro-adjustments only
-
-**SAFETY VISUAL CHECKS:**
-- If object suddenly grows much larger = collision risk, stop immediately  
-- When object edges become very sharp and detailed = near contact
-- Use gripper finger visibility as collision warning system
-- Monitor for visual occlusion changes indicating proximity
-
-## SATA CABLE CONNECTION ASSESSMENT:
-
-When encountering SATA cables, analyze the connection quality:
-
-**Properly Seated SATA Connection:**
-- Connector fully inserted with no visible gap between connector and port
-- Plastic housing flush against device surface
-- No bent or damaged pins visible
-- Cable oriented correctly (not upside down or sideways)
-- Locking mechanism (if present) properly engaged
-
-**Improperly Seated SATA Connection:**
-- Visible gap at connection point between connector and port
-- Connector appears raised, tilted, or partially inserted
-- Pins visible that should be hidden when fully seated
-- Cable under tension or at unnatural angle
-- Misaligned orientation
-
-**SATA Assessment Protocol:**
-1. Classify connection as "PROPERLY_SEATED" or "IMPROPERLY_SEATED"
-2. Note confidence level based on visual clarity
-3. Identify specific visual indicators supporting classification
-4. If improperly seated, describe the specific issue observed
-
-## MOVEMENT PROTOCOL:
-- Move slowly and iteratively, checking visual feedback after each move
+Instructions:
+- Move slowly and iteratively
 - Close gripper completely to grab objects
 - Check results after each move before proceeding
-- When object is inside gripper, it will not be visible and will cover the whole wrist camera view
-- Split into smaller steps and reanalyze visual feedback after each one
-- Use only the latest images to evaluate success and distance
-- Always plan movements to avoid collisions using visual cues
+- When the object inside your gripper it will not be visible on top and front cameras and will cover the whole view for the wrist one
+- Split into smaller steps and reanalyze after each one
+- Use only the latest images to evaluate success
+- Always plan movements to avoid collisions
+- Move above object with gripper tilted up (10–15°) to avoid collisions. Stay >25 cm above ground when moving or rotating
 - Never move with gripper near the ground
-- Drop and restart plan if visual feedback is unclear, inconsistent, or indicates failure
-
-Process camera input continuously and adjust approach speed/precision based on these visual proximity indicators.
+- Drop and restart plan if unsure or failed
 """
     )
 
