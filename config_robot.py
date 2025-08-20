@@ -8,9 +8,9 @@ from typing import Dict, Tuple,Any, Final
 from lerobot.cameras.opencv.configuration_opencv import OpenCVCameraConfig
 
 # Module-level constants
-DEFAULT_ROBOT_TYPE: Final[str] = "so101" # "so100", "so101", "lekiwi"
+DEFAULT_ROBOT_TYPE: Final[str] = "so101" # "so100", "so101"
 DEFAULT_SERIAL_PORT: Final[str] = "/dev/tty.usbmodem59090526531" # only for SO ARM
-DEFAULT_REMOTE_IP: Final[str] = "192.168.1.1" # only for LeKiwi
+
 
 # Camera configuration constants
 # Can also be different for different cameras, set it in lerobot_config
@@ -22,7 +22,7 @@ DEFAULT_CAMERA_HEIGHT: Final[int] = 1080
 class RobotConfig:
     
     # Camera configuration using lerobot format
-    # hugging face has many robots so made it compitable with these robots "so100", "so101", "lekiwi"
+    # hugging face has many robots so made it compitable with these robots "so100", "so101"
     lerobot_config: Dict[str, Any] = field(
         default_factory=lambda: {
             "type": DEFAULT_ROBOT_TYPE,
@@ -102,29 +102,109 @@ class RobotConfig:
 
     # Robot description for AI/LLM context
     robot_description: str = ("""
-Follow these instructions precisely. Never deviate. Do not make assumptions and stick with what the user told you to pick up. Just perform the actions.
+Follow these instructions precisely. Never deviate.
 
 You control a 3D printed robot with 5 DOF + gripper. Max forward reach ~250 mm.
 Shoulder and elbow links are 12 cm and 14 cm. Gripper fingers ~8 cm.
 Use these to estimate distances. E.g., if the object is near but not in the gripper, you can safely move 5–10 cm forward.
 
-
-Robot has 2 cameras:
+Robot has 1 camera:
 - wrist: close view of gripper
-- top view: shows whole robot and environment
 
+Robot is attached to the left side of a table. The dimensions of the table are the following: length is 100 cm and width is 60 cm.
+The table has a grid that makes breaking the environment down easier. There are 15 squares in total. There are 3 rows and 5 columns. The dimensions of each grid is 20cm by 20 cm.
+Items will generally be placed in the 3rd and 4th column. The robot is always in column one.
 
-Instructions:
-- Move slowly and iteratively
+## TARGET IDENTIFICATION - DIMM Memory Modules:
+
+**DIMM Visual Characteristics on Motherboard:**
+- **Shape:** Long, narrow rectangular circuit board (~13cm length, ~3cm height)
+- **Color:** Typically green, black, or blue PCB with metallic gold/silver contact pins
+- **Mounting:** Inserted vertically into white/black DIMM slots with plastic clips on ends
+- **Orientation:** Stands perpendicular to motherboard surface
+- **Contact Pins:** Visible gold/silver metallic edge connectors along bottom
+- **Labels:** Often has manufacturer stickers/text on the side facing up
+- **Clips:** White or black plastic retention clips on both ends of slot
+- **Notch:** Small notch/gap in contact pins prevents incorrect insertion
+
+## CPU INSTALLATION DETECTION PROTOCOL:
+
+**CPU Visual Identification:**
+- **CPU Socket:** Square or rectangular area with grid of pins/contacts, often with retention mechanism
+- **Socket Types:** LGA (flat contacts), PGA (pin holes), or BGA (surface mount)
+- **Retention Mechanism:** Metal lever arm, brackets, or clips around socket perimeter
+
+**CPU INSTALLED Indicators:**
+- **CPU Visible:** Square/rectangular processor chip sits in socket center
+- **Heat Spreader:** Metallic top surface (usually silver/copper colored) visible
+- **Flush Mounting:** CPU sits level with socket, no gaps visible
+- **Retention Secured:** Lever arm in closed/locked position, clips engaged
+- **Markings:** CPU model numbers/text visible on top surface
+- **No Exposed Pins:** Socket pins/contacts not visible (covered by CPU)
+
+**CPU NOT INSTALLED Indicators:**
+- **Empty Socket:** Grid of pins, holes, or contact pads clearly visible
+- **Open Retention:** Lever arm in open position, clips disengaged
+- **Exposed Contacts:** Pin grid array or land grid array contacts visible
+- **No Heat Spreader:** No metallic CPU top surface present
+- **Socket Guard:** Plastic protective cover may be present on new motherboards
+
+**Inspection Method:**
+- Position camera to get clear overhead view of CPU socket area
+- Look for presence/absence of CPU heat spreader
+- Check retention mechanism position (open vs closed)
+- Verify if socket pins/contacts are visible or covered
+
+## DIMM SEATING INSPECTION PROTOCOL:
+
+**If task requires checking if DIMM is properly seated, use these inspection coordinates:**
+
+Move to each position sequentially and take a picture at each location:
+
+**Position 1:** { "gripper": -43.0, "wrist_roll": -3.1, "wrist_flex": 38.4, "elbow_flex": 33.0, "shoulder_lift": 54.6, "shoulder_pan": 92.0 }
+
+**Position 2:** { "gripper": -43.1, "wrist_roll": -4.9, "wrist_flex": 95.2, "elbow_flex": 126.6, "shoulder_lift": 111.6, "shoulder_pan": 93.2 }
+
+**Position 3:** { "gripper": -43.1, "wrist_roll": -19.0, "wrist_flex": 38.4, "elbow_flex": 48.5, "shoulder_lift": 78.8, "shoulder_pan": 85.3 }
+
+**Position 4:** { "gripper": -43.1, "wrist_roll": -8.6, "wrist_flex": 9.7, "elbow_flex": 45.8, "shoulder_lift": 95.9, "shoulder_pan": 102.1 }
+
+**After taking all 4 pictures, assess DIMM seating by checking:**
+- Both retention clips are fully engaged and locked
+- DIMM is flush and level in the slot
+- No visible gaps between DIMM bottom and slot
+- Contact pins are fully inserted (not visible above slot level)
+- DIMM stands straight and perpendicular to motherboard
+- No tilting or uneven insertion
+
+## VISUAL PROXIMITY DETECTION - Use camera feedback to judge distances:
+
+**APPROACH INDICATORS:**
+- **Object Size:** Target appears larger in frame as you approach - use this as primary distance gauge
+- **Detail Resolution:** Surface textures, edges become sharper and more defined when closer
+- **Focus Quality:** Objects become clearer with better edge definition at optimal distance
+- **Gripper Reference:** Compare object size to visible gripper fingers (8cm) for scale estimation
+
+**DISTANCE ZONES with Visual Cues:**
+- **Far (>15cm):** Object small in frame, minimal detail visible - safe for faster approach
+- **Medium (5-15cm):** Object details emerging, gripper fingers visible for scale - moderate speed
+- **Near (2-5cm):** Fine details clear, object fills significant portion of frame - slow precision movements
+- **Grasp Zone (<2cm):** Maximum detail visible, object very large in frame - micro-adjustments only
+
+**SAFETY VISUAL CHECKS:**
+- If object suddenly grows much larger = collision risk, stop immediately  
+- When object edges become very sharp and detailed = near contact
+- Use gripper finger visibility as collision warning system
+
+## MOVEMENT PROTOCOL:
+- Move slowly and iteratively, checking visual feedback after each move
 - Close gripper completely to grab objects
-- Check results after each move before proceeding
-- When the object inside your gripper it will not be visible on top and front cameras and will cover the whole view for the wrist one
-- Split into smaller steps and reanalyze after each one
-- Use only the latest images to evaluate success
-- Always plan movements to avoid collisions
+- Split into smaller steps and reanalyze visual feedback after each one
+- Use only the latest images to evaluate success and distance
 - Move above object with gripper tilted up (10–15°) to avoid collisions. Stay >25 cm above ground when moving or rotating
 - Never move with gripper near the ground
-- Drop and restart plan if unsure or failed
+- When object is inside gripper, it will not be visible and will cover the whole wrist camera view
+- Drop and restart plan if visual feedback is unclear, inconsistent, or indicates failure
 """
     )
 
