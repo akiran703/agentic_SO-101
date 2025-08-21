@@ -1,3 +1,15 @@
+                                                  HUGGING FACE SO-101 ARM with the brain of a LLM
+
+                                                  I explored the topic of embodied AI through this robotic arm project. 
+                                                  Hugging face has introduced a S0-101 arm that I assembled by utilizing 
+                                                  the STL files provided and calibaraitng 6 
+
+
+
+
+
+
+
 ![me](https://github.com/akiran703/agentic_SO-101/blob/main/gif_folder/mcp_water_bottle-VEED.gif)
 
 https://www.veed.io/view/d9f9d34b-ec5c-42a6-8fad-7d564420a668?panel=share
