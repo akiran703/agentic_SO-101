@@ -88,9 +88,9 @@ BAUD_RATE = 9600
 
 ## Configuration
 
-### MCP Client Setup
+# MCP Client Setup
 
-# DEV MODE
+### DEV MODE
 Now you can try to control the robot manually using the keyboard. Test it before moving on to the MCP step, to make sure it works properly.
 ```Bash
 mcp dev mcp_server.py
