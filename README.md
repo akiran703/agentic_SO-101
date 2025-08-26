@@ -105,7 +105,7 @@ Add the following to your Claude Desktop configuration file:
 ```json
 {
   "mcpServers": {
-    "SO-ARM100 robot controller": {
+    "SO-ARM101 robot controller": {
       "url": "http://127.0.0.1:3001/sse"
     }
   }
@@ -113,9 +113,30 @@ Add the following to your Claude Desktop configuration file:
 ```
 
 
+#Configuration for reasoning model
+Create a .env file in the project root with your API keys:
+
+### API Keys 
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+
+### MCP Server Configuration (optional)
+MCP_SERVER_IP=127.0.0.1
+MCP_PORT=3001
+
+
 ## Usage
 
-Once configured, you can interact with your robot through natural language in your AI assistant:
+# Start Server
+```Bash
+mcp run mcp_server.py --transport sse
+```
+
+#start reasoning model interface
+```Python
+python user_interface.py --thinking-budget 2048
+```
+
+Once configured, you can interact with your robot through natural language:
 
 **Example Commands:**
 - "Move the robot arm to position (100, 50, 30)"
@@ -126,23 +147,36 @@ Once configured, you can interact with your robot through natural language in yo
 
 ## Available Tools
 
-The MCP server exposes the following tools to AI agents:
+The MCP server has the following tools :
 
-### `move_arm`
+### `get_initial_instructions`
+loads the prompt from the robot_config.py file
+
+
+### `move_robot`
 Move the robot arm to a specific position.
 - **Parameters**: 
-  - `x`, `y`, `z` (float): Target coordinates
-  - `speed` (optional, int): Movement speed (1-100)
+  - move_gripper_up_mm (float): move the gripper up by * mm
+  - move_gripper_forward_mm (float): move the gripper forward by * mm
+  - tilt_gripper_down_angle (float): move the gripper down by * mm
+  - rotate_gripper_clockwise_angle (float): rotate the gripper  * degree counterclockwise
+  - rotate_robot_right_angle (float): rotate the gripper * degree clockwise
 
-### `move_joint`
-Move a specific joint to a target angle.
+
+### `control_gripper`
+open the gripper 
 - **Parameters**:
-  - `joint_id` (int): Joint number (1-6)
-  - `angle` (float): Target angle in degrees
+  - `‎gripper_openness_pct` (int): 0-100
 
-### `get_position`
-Get the current position of the robot arm.
-- **Returns**: Current x, y, z coordinates and joint angles
+
+### `dimm_protocol`
+Moves the robot to a location near DIMMS and trys to understand if the DIMM is seated.
+
+
+
+### `get_robot_state`
+Get the current position of the robot arm and images of what the robot currently sees.
+- **Returns**: data about the robot in json format
 
 
 
@@ -176,12 +210,12 @@ https://www.veed.io/view/ba0a4b59-265f-4119-94be-7ebabc89abd9?panel=share
 ## Troubleshooting
 
 ### Connection Issues
-- Verify the correct serial port in `config.py`
+- Verify the correct serial port in `config_robot.py`
 - Check that your robot is powered on and connected
 - Ensure proper USB drivers are installed
 
 ### Camera Problems
-- Verify camera index in `config.py`
+- Verify camera index in `config_robot.py`
 - Test camera separately with system tools
 - Check camera permissions/access rights
 
@@ -190,26 +224,7 @@ https://www.veed.io/view/ba0a4b59-265f-4119-94be-7ebabc89abd9?panel=share
 - Check configuration file syntax
 - Review server logs for error messages
 
-## Development
 
-### Project Structure
-```
-robot_mcp/
-├── mcp_robot_server.py    # Main MCP server implementation
-├── robot_controller.py    # Robot control logic
-├── camera_manager.py      # Camera handling
-├── config.py             # Configuration settings
-├── requirements.txt      # Python dependencies
-└── README.md            # This file
-```
-
-### Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
 
 ## License
 
