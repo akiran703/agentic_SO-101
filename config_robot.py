@@ -27,7 +27,6 @@ class RobotConfig:
         default_factory=lambda: {
             "type": DEFAULT_ROBOT_TYPE,
             "port": DEFAULT_SERIAL_PORT,
-            "remote_ip": DEFAULT_REMOTE_IP,
             "cameras": {
                 "wrist": OpenCVCameraConfig(
                     index_or_path=1,
@@ -110,6 +109,7 @@ Use these to estimate distances. E.g., if the object is near but not in the grip
 
 Robot has 1 camera:
 - wrist: close view of gripper
+-top: shows the robot and the environment
 
 Robot is attached to the left side of a table. The dimensions of the table are the following: length is 100 cm and width is 60 cm.
 The table has a grid that makes breaking the environment down easier. There are 15 squares in total. There are 3 rows and 5 columns. The dimensions of each grid is 20cm by 20 cm.
@@ -127,47 +127,9 @@ Items will generally be placed in the 3rd and 4th column. The robot is always in
 - **Clips:** White or black plastic retention clips on both ends of slot
 - **Notch:** Small notch/gap in contact pins prevents incorrect insertion
 
-## CPU INSTALLATION DETECTION PROTOCOL:
-
-**CPU Visual Identification:**
-- **CPU Socket:** Square or rectangular area with grid of pins/contacts, often with retention mechanism
-- **Socket Types:** LGA (flat contacts), PGA (pin holes), or BGA (surface mount)
-- **Retention Mechanism:** Metal lever arm, brackets, or clips around socket perimeter
-
-**CPU INSTALLED Indicators:**
-- **CPU Visible:** Square/rectangular processor chip sits in socket center
-- **Heat Spreader:** Metallic top surface (usually silver/copper colored) visible
-- **Flush Mounting:** CPU sits level with socket, no gaps visible
-- **Retention Secured:** Lever arm in closed/locked position, clips engaged
-- **Markings:** CPU model numbers/text visible on top surface
-- **No Exposed Pins:** Socket pins/contacts not visible (covered by CPU)
-
-**CPU NOT INSTALLED Indicators:**
-- **Empty Socket:** Grid of pins, holes, or contact pads clearly visible
-- **Open Retention:** Lever arm in open position, clips disengaged
-- **Exposed Contacts:** Pin grid array or land grid array contacts visible
-- **No Heat Spreader:** No metallic CPU top surface present
-- **Socket Guard:** Plastic protective cover may be present on new motherboards
-
-**Inspection Method:**
-- Position camera to get clear overhead view of CPU socket area
-- Look for presence/absence of CPU heat spreader
-- Check retention mechanism position (open vs closed)
-- Verify if socket pins/contacts are visible or covered
-
 ## DIMM SEATING INSPECTION PROTOCOL:
 
-**If task requires checking if DIMM is properly seated, use these inspection coordinates:**
-
-Move to each position sequentially and take a picture at each location:
-
-**Position 1:** { "gripper": -43.0, "wrist_roll": -3.1, "wrist_flex": 38.4, "elbow_flex": 33.0, "shoulder_lift": 54.6, "shoulder_pan": 92.0 }
-
-**Position 2:** { "gripper": -43.1, "wrist_roll": -4.9, "wrist_flex": 95.2, "elbow_flex": 126.6, "shoulder_lift": 111.6, "shoulder_pan": 93.2 }
-
-**Position 3:** { "gripper": -43.1, "wrist_roll": -19.0, "wrist_flex": 38.4, "elbow_flex": 48.5, "shoulder_lift": 78.8, "shoulder_pan": 85.3 }
-
-**Position 4:** { "gripper": -43.1, "wrist_roll": -8.6, "wrist_flex": 9.7, "elbow_flex": 45.8, "shoulder_lift": 95.9, "shoulder_pan": 102.1 }
+**If task requires checking if DIMM is properly seated, use the DIMM protocol tool
 
 **After taking all 4 pictures, assess DIMM seating by checking:**
 - Both retention clips are fully engaged and locked
