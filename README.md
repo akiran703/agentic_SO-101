@@ -234,7 +234,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [Anthropic](https://anthropic.com) for the Model Context Protocol specification
 - [Hugging face](https://huggingface.co/docs/lerobot/so101) for intructions to build and configure the robot
-- (youtube.com/watch?v=EmpQQd7jRqs&feature=youtu.be) for the inspiration of the project 
+- [ilia](youtube.com/watch?v=EmpQQd7jRqs&feature=youtu.be) for the inspiration of the project 
 
 ## Related Projects
 
