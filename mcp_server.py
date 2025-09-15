@@ -150,8 +150,8 @@ def dimm_protocol(different_location):
     return get_state_with_images(result_json, is_movement=False)
 
 
-@mcp.tool(description="Move to the predfined locations of dimms and take pictures.You can pass 1, 2, 3, or 4 as a string into the parameters to get different angles.")
-def dimm_protocol(different_location):
+@mcp.tool(description="Move to the predfined locations of cpu and take pictures.You can pass 1, 2, 3, 4, 5 as a string into the parameters to get different angles.")
+def cpu_protocol(different_location):
     CPU_LOC = {
             "1": { 
         "gripper": 0, 
