@@ -60,7 +60,7 @@ cd robot_mcp
 pip install -r requirements.txt
 ```
 
-3.Update MOTOR_NORMALIZED_TO_DEGREE_MAPPING in config_robot.py to match your robot calibration. Run the const_check.py to make sure all motors are working by moving the arm freely. Follow the Hugging face doc page for calibration assitance: https://huggingface.co/docs/lerobot/so101 or https://huggingface.co/docs/lerobot/so100
+3. Update MOTOR_NORMALIZED_TO_DEGREE_MAPPING in config_robot.py to match your robot calibration. Run the const_check.py to make sure all motors are working by moving the arm freely. Follow the Hugging face doc page for calibration assitance: https://huggingface.co/docs/lerobot/so101 or https://huggingface.co/docs/lerobot/so100
 ```python
 python check_positions.py
 ```
@@ -236,7 +236,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [Anthropic](https://anthropic.com) for the Model Context Protocol specification
 - [Hugging face](https://huggingface.co/docs/lerobot/so101) for intructions to build and configure the robot
+- [WLKATA](https://www.youtube.com/watch?v=3UEKEHTnf9E)  for the inspiration of the project 
 - [ilia](youtube.com/watch?v=EmpQQd7jRqs&feature=youtu.be) for the inspiration of the project 
+
+
 
 ## Related Projects
 
