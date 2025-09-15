@@ -188,7 +188,7 @@ open the gripper
   - `‎gripper_openness_pct` (int): 0-100
 
 ### `cpu_protocol`
-Moves the robot to a location near CPu and trys to understand if the DIMM is seated.
+Moves the robot to a location near CPu and trys to understand if the CPU is seated.
 
 ### `dimm_protocol`
 Moves the robot to a location near DIMMS and trys to understand if the DIMM is seated.
