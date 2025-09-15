@@ -148,6 +148,59 @@ def dimm_protocol(different_location):
     different_location = str(different_location)
     robot.set_joints_absolute(DIMM_LOC[different_location])
     return get_state_with_images(result_json, is_movement=False)
+
+
+@mcp.tool(description="Move to the predfined locations of dimms and take pictures.You can pass 1, 2, 3, or 4 as a string into the parameters to get different angles.")
+def dimm_protocol(different_location):
+    CPU_LOC = {
+            "1": { 
+        "gripper": 0, 
+        "wrist_roll": -8.0, 
+        "wrist_flex": 35.0, 
+        "elbow_flex": 75.0, 
+        "shoulder_lift": 105.0, 
+        "shoulder_pan": 90.0 
+    },
+            "2": { 
+        "gripper": 0, 
+        "wrist_roll": -12.0, 
+        "wrist_flex": 70.0, 
+        "elbow_flex": 115.0, 
+        "shoulder_lift": 130.0, 
+        "shoulder_pan": 92.0 
+    },
+            "3": { 
+        "gripper": 0, 
+        "wrist_roll": -15.0, 
+        "wrist_flex": 20.0, 
+        "elbow_flex": 50.0, 
+        "shoulder_lift": 85.0, 
+        "shoulder_pan": 91.0 
+    },
+            "4": { 
+        "gripper": 0, 
+        "wrist_roll": -5.0, 
+        "wrist_flex": 55.0, 
+        "elbow_flex": 95.0, 
+        "shoulder_lift": 115.0, 
+        "shoulder_pan": 88.0 
+    },
+            "5": { 
+        "gripper": 0, 
+        "wrist_roll": -18.0, 
+        "wrist_flex": 85.0, 
+        "elbow_flex": 125.0, 
+        "shoulder_lift": 135.0, 
+        "shoulder_pan": 94.0 
+    },
+        }
+
+    robot = get_robot()
+    move_result = robot.get_current_robot_state()
+    result_json = move_result.to_json()
+    different_location = str(different_location)
+    robot.set_joints_absolute(CPU_LOC[different_location])
+    return get_state_with_images(result_json, is_movement=False)
     
 
 
