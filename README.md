@@ -145,6 +145,10 @@ MCP_PORT=3001
 
 ## Usage
 
+# Note
+# In order for MCP Client to make request to the Claude Sonnet Model, we will need to purchase tokens. Purchasing tokens will allow for x amount of responses based on how complex the request is. For example to pick up a water bottle with the arm takes 893,315 tokens, total price is $4.19. For more complex task like moving to a cpu location and determing if it is installed or not takes 5,272,296 tokens $17.67. More information to process more tokens used. 
+
+
 # Start Server
 ```Bash
 mcp run mcp_server.py --transport sse
@@ -188,7 +192,7 @@ open the gripper
   - `‎gripper_openness_pct` (int): 0-100
 
 ### `cpu_protocol`
-Moves the robot to a location near CPu and trys to understand if the CPU is seated.
+Moves the robot to a location near CPU and trys to understand if the CPU is seated.
 
 ### `dimm_protocol`
 Moves the robot to a location near DIMMS and trys to understand if the DIMM is seated.
