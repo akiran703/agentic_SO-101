@@ -233,11 +233,11 @@ Get the current position of the robot arm and images of what the robot currently
 - Review server logs for error messages
 
 
-## Future Implementaion
+## Future Implementation
 
-- Add pressue sensors to the claw to provide more information to the reasoning model, to improve efficeny 
-- Add more cameras and improve the camera quality; the pictures taken are not the best which is hard for the model to procces sometimes; this include lighting 
-- use open source models like deepseek to save money
+- Add pressure sensors to the claw to provide more information to the reasoning model, to improve efficiency
+- Add more cameras and improve the camera quality; the pictures taken are not the best which is hard for the model to process sometimes; this includes lighting
+- Use open source models like DeepSeek to save money
 
 
 ## License
