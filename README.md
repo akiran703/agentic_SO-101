@@ -146,7 +146,7 @@ MCP_PORT=3001
 ## Usage
 
 # Note
-# In order for MCP Client to make request to the Claude Sonnet Model, we will need to purchase tokens. Purchasing tokens will allow for x amount of responses based on how complex the request is. For example to pick up a water bottle with the arm takes 893,315 tokens, total price is $4.19. For more complex task like moving to a cpu location and determing if it is installed or not takes 5,272,296 tokens $17.67. More information to process more tokens used. 
+In order for MCP Client to make request to the Claude Sonnet Model, we will need to purchase tokens. Purchasing tokens will allow for x amount of responses based on how complex the request is. For example to pick up a water bottle with the arm takes 893,315 tokens, total price is $4.19. For more complex task like moving to a cpu location and determing if it is installed or not takes 5,272,296 tokens $17.67. More information to process more tokens used. 
 
 
 # Start Server
